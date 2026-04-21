@@ -1,0 +1,29 @@
+# Built artifacts
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Build directories
+build/
+.gradle/
+captures/
+
+# Local config (machine-specific)
+local.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+.DS_Store
+
+# Kotlin incremental compilation
+.kotlin/
+
+# Proguard
+proguard/
+
+# Test results
+test-results/
