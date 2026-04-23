@@ -34,6 +34,25 @@ fun QuizScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val language = LocalAppLanguage.current
+    var showFinishDialog by remember { mutableStateOf(false) }
+
+    if (showFinishDialog) {
+        AlertDialog(
+            onDismissRequest = { showFinishDialog = false },
+            title = { Text(t("Finish quiz?", "¿Terminar el quiz?")) },
+            text = { Text(t("Your ${state.answeredCount} answers will be saved.", "Tus ${state.answeredCount} respuestas se guardarán.")) },
+            confirmButton = {
+                Button(onClick = { showFinishDialog = false; viewModel.finishQuiz() }) {
+                    Text(t("Finish", "Terminar"))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showFinishDialog = false }) {
+                    Text(t("Keep quizzing", "Seguir jugando"))
+                }
+            }
+        )
+    }
 
     if (state.isFinished) {
         QuizResultsScreen(
@@ -56,7 +75,7 @@ fun QuizScreen(
                 title = { Text(titleText, maxLines = 1) },
                 navigationIcon = {
                     if (state.canFinish) {
-                        IconButton(onClick = { viewModel.finishQuiz() }) {
+                        IconButton(onClick = { showFinishDialog = true }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, t("Finish quiz", "Terminar quiz"))
                         }
                     }
