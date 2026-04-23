@@ -243,6 +243,7 @@ private fun UserHomeScreen(
 ) {
     var showQuizFilterDialog by remember { mutableStateOf(false) }
     var showSignOutDialog by remember { mutableStateOf(false) }
+    var showNotYouDialog by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(pendingQuizSubjectId) {
@@ -256,6 +257,24 @@ private fun UserHomeScreen(
             showQuizFilterDialog = true
             onClearPendingOpenQuizDialog()
         }
+    }
+
+    if (showNotYouDialog) {
+        AlertDialog(
+            onDismissRequest = { showNotYouDialog = false },
+            title = { Text(t("Sign out ${user.name}?", "¿Cerrar sesión de ${user.name}?")) },
+            text = { Text(t("The next person can sign in from the picker.", "La siguiente persona puede iniciar sesión desde el selector.")) },
+            confirmButton = {
+                Button(onClick = { showNotYouDialog = false; onSignOut() }) {
+                    Text(t("Sign out", "Cerrar sesión"))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNotYouDialog = false }) {
+                    Text(t("Cancel", "Cancelar"))
+                }
+            }
+        )
     }
 
     if (showSignOutDialog) {
@@ -348,7 +367,7 @@ private fun UserHomeScreen(
                         )
                     }
                 }
-                TextButton(onClick = { showSignOutDialog = true }) {
+                TextButton(onClick = { showNotYouDialog = true }) {
                     Text(t("Not you?", "¿No eres tú?"), fontSize = 12.sp)
                 }
             }
@@ -502,18 +521,19 @@ private fun QuizFilterDialog(
                 }
 
                 // Person-picker section
+                val selectedCount = selectedPersonIds.size
                 val sectionLabel = when {
                     nobodyReady -> t(
                         "Pick specific people (nobody ready yet)",
                         "Elegir personas específicas (nadie listo aún)"
                     )
-                    selectedPersonIds.isEmpty() -> t(
+                    selectedCount == 0 -> t(
                         "Pick specific people (0 selected)",
                         "Elegir personas específicas (0 seleccionadas)"
                     )
                     else -> t(
-                        "Pick specific people (${selectedPersonIds.size} selected)",
-                        "Elegir personas específicas (${selectedPersonIds.size} seleccionadas)"
+                        "Pick specific people ($selectedCount selected)",
+                        "Elegir personas específicas ($selectedCount ${plural(selectedCount, "selected", "selected", "seleccionada", "seleccionadas")})"
                     )
                 }
                 Row(
@@ -639,10 +659,20 @@ private fun DuplicateNameDialog(
         onDismissRequest = onImDifferent,
         title = { Text(t("Name already taken", "Nombre ya en uso")) },
         text = {
-            Text(t(
-                "There's already a ${collidingUser.name} here. Are you them?",
-                "Ya hay un ${collidingUser.name} aquí. ¿Eres esa persona?"
-            ))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(t(
+                    "There's already a ${collidingUser.name} here. Are you them?",
+                    "Ya hay un ${collidingUser.name} aquí. ¿Eres esa persona?"
+                ))
+                Text(
+                    t(
+                        "If you're different, you can add more to your last name to tell you apart.",
+                        "Si eres diferente, puedes agregar más a tu apellido para diferenciarte."
+                    ),
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
         },
         confirmButton = {
             Button(onClick = onAreYouThem) {
@@ -651,7 +681,7 @@ private fun DuplicateNameDialog(
         },
         dismissButton = {
             TextButton(onClick = onImDifferent) {
-                Text(t("Add a middle initial or more", "Agregar inicial o más apellido"))
+                Text(t("No, I'm different", "No, soy diferente"))
             }
         }
     )

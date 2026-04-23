@@ -230,15 +230,15 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
     fun renameUser(userId: Long, newName: String) {
         if (newName.isBlank()) return
         viewModelScope.launch {
-            val state = _uiState.value as? HomeUiState.UserSelected ?: return@launch
+            val cur = _uiState.value as? HomeUiState.UserSelected ?: return@launch
             val existing = repo.getUserByName(newName.trim())
             if (existing != null && existing.id != userId) {
-                _uiState.value = state.copy(renameError = "That name is already taken")
+                _uiState.value = cur.copy(renameError = "That name is already taken")
                 return@launch
             }
             repo.renameUser(userId, newName)
             val updatedUser = repo.getUserById(userId) ?: return@launch
-            transitionToUserSelected(updatedUser)
+            _uiState.value = cur.copy(user = updatedUser, renameError = null)
         }
     }
 

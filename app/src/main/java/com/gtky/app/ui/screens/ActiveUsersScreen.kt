@@ -55,7 +55,7 @@ fun ActiveUsersScreen(
         ) {
             if (state.groups.isNotEmpty()) {
                 Text(
-                    "Filter by Group",
+                    t("Filter by Group", "Filtrar por grupo"),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.padding(start = 16.dp, top = 12.dp)
@@ -144,15 +144,16 @@ private fun UserRow(
                     Text("(you)", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
                 }
             }
-            Text(
-                text = "${userWithCount.answerCount} ${t("survey answers", "respuestas de encuesta")}  •  ${userWithCount.quizCount} ${t("quiz answers", "respuestas de quiz")}",
-                fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-            )
-            if (!userWithCount.isEligible) {
+            if (userWithCount.isEligible) {
+                Text(
+                    text = "${userWithCount.answerCount} ${t("survey answers", "respuestas de encuesta")}  •  ${userWithCount.quizCount} ${t("quiz answers", "respuestas de quiz")}",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                )
+            } else {
                 Text(
                     t("Still setting up…", "Aún configurándose…"),
-                    fontSize = 12.sp,
+                    fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                 )
             }

@@ -119,7 +119,10 @@ fun PickUserScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { pendingUser = user }
+                                .clickable {
+                                    val hasCollision = nameIndexMap[user.id]?.contains("(") == true
+                                    if (hasCollision) pendingUser = user else onUserSelected(user)
+                                }
                                 .padding(horizontal = 16.dp, vertical = 16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
