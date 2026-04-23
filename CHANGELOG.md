@@ -2,6 +2,8 @@
 
 ## UX Fix Pack
 
+- **Fix 25 — Profile screen respects the current language** — `ProfileViewModel` now takes a `language: String` constructor parameter. The `init` block picks `questionTemplateEs` over `questionTemplate` when `language == "es"`, and translates stored English answer text to Spanish by index-matching against `optionsJsonEs`. `NavGraph` reads `GTKYApplication.language` as state and passes it into `ProfileViewModel.Factory` with a `key = "profile-$userId-$language"` so the ViewModel is recreated on language toggle.
+
 - **Fix 24 — One-way connection rows are now tappable** — `OneWayConnectionRow` gains an `onClick: (() -> Unit)?` parameter (same pattern as `MutualConnectionRow`). In MINE scope tapping navigates directly to the other user's profile; in EVERYONE scope the same disambiguation dialog appears. The 8-answer gate snackbar applies to both scopes.
 
 - **Fix 23 — Connections profile gate uses live answer count** — `ConnectionsViewModel.loadConnections` replaced the one-shot `.first()` read of `myAnswerCount` with a `combine(getAllUsers(), getAnswerCountForUser())` flow so the gate updates in real time. A user who opens Connections with 6 answers, answers 3 more elsewhere, and returns no longer hits the gate stale.

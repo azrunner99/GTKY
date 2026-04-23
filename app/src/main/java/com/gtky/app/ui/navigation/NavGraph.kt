@@ -147,7 +147,12 @@ fun GTKYNavGraph(navController: NavHostController) {
             arguments = listOf(navArgument("userId") { type = NavType.LongType })
         ) { backStack ->
             val userId = backStack.arguments!!.getLong("userId")
-            val vm: ProfileViewModel = viewModel(factory = ProfileViewModel.Factory(repo, userId))
+            val app = context.applicationContext as GTKYApplication
+            val language by app.language.collectAsState()
+            val vm: ProfileViewModel = viewModel(
+                key = "profile-$userId-$language",
+                factory = ProfileViewModel.Factory(repo, userId, language)
+            )
             ProfileScreen(viewModel = vm, onBack = { navController.popBackStack() })
         }
 
