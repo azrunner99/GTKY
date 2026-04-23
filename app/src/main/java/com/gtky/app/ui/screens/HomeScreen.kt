@@ -40,6 +40,7 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsState()
     val allUsers by viewModel.allUsers.collectAsState()
     val groups by viewModel.groups.collectAsState()
+    val readyUsersByGroup by viewModel.readyUsersByGroup.collectAsState()
 
     when (val state = uiState) {
         is HomeUiState.Loading -> {
@@ -91,6 +92,7 @@ fun HomeScreen(
                 readyCount = state.readyCount,
                 renameError = state.renameError,
                 groups = groups,
+                readyUsersByGroup = readyUsersByGroup,
                 onStartSurvey = { onStartSurvey(state.user.id) },
                 onGoToQuiz = { groupIds -> onGoToQuiz(state.user.id, groupIds) },
                 onGoToConnections = onGoToConnections,
@@ -210,6 +212,7 @@ private fun UserHomeScreen(
     readyCount: Int,
     renameError: String?,
     groups: List<Group>,
+    readyUsersByGroup: Map<Long, List<User>>,
     onStartSurvey: () -> Unit,
     onGoToQuiz: (String) -> Unit,
     onGoToConnections: () -> Unit,
@@ -261,6 +264,7 @@ private fun UserHomeScreen(
     if (showQuizGroupPicker) {
         QuizGroupPickerDialog(
             groups = groups,
+            readyUsersByGroup = readyUsersByGroup,
             onConfirm = { groupIds ->
                 showQuizGroupPicker = false
                 onGoToQuiz(groupIds)
@@ -449,11 +453,22 @@ private fun EditNameDialog(
 @Composable
 private fun QuizGroupPickerDialog(
     groups: List<Group>,
+    readyUsersByGroup: Map<Long, List<User>>,
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var allSelected by remember { mutableStateOf(true) }
     var selectedIds by remember { mutableStateOf(groups.map { it.id }.toSet()) }
+
+    val readyUsers = remember(allSelected, selectedIds, readyUsersByGroup) {
+        if (allSelected) readyUsersByGroup[0L] ?: emptyList()
+        else selectedIds.flatMap { readyUsersByGroup[it] ?: emptyList() }.distinctBy { it.id }
+    }
+    val readyCount = readyUsers.size
+    val previewLine: String? = if (readyCount == 0) null else {
+        val names = readyUsers.take(3).joinToString(", ") { it.name }
+        if (readyCount > 3) "$names ${t("and ${readyCount - 3} more", "y ${readyCount - 3} más")}" else names
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -491,6 +506,25 @@ private fun QuizGroupPickerDialog(
                         },
                         label = { Text(group.name) }
                     )
+                }
+                if (readyCount > 0) {
+                    HorizontalDivider()
+                    Text(
+                        t(
+                            "$readyCount ${if (readyCount == 1) "person" else "people"} ready to quiz about",
+                            "$readyCount ${if (readyCount == 1) "persona lista" else "personas listas"} para preguntar"
+                        ),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    if (previewLine != null) {
+                        Text(
+                            previewLine,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+                        )
+                    }
                 }
             }
         },

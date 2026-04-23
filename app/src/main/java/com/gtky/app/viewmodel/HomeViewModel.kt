@@ -45,16 +45,32 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
     private val _groups = MutableStateFlow<List<Group>>(emptyList())
     val groups: StateFlow<List<Group>> = _groups.asStateFlow()
 
+    private val _readyUsersByGroup = MutableStateFlow<Map<Long, List<User>>>(emptyMap())
+    val readyUsersByGroup: StateFlow<Map<Long, List<User>>> = _readyUsersByGroup.asStateFlow()
+
     private var answerCountJob: Job? = null
 
     init {
         viewModelScope.launch {
-            repo.getAllUsers().collect { users -> _allUsers.value = users }
+            repo.getAllUsers().collect { users ->
+                _allUsers.value = users
+                refreshReadyUsersByGroup()
+            }
         }
         viewModelScope.launch {
-            repo.getAllGroups().collect { g -> _groups.value = g }
+            repo.getAllGroups().collect { g ->
+                _groups.value = g
+                refreshReadyUsersByGroup()
+            }
         }
         loadActiveUser()
+    }
+
+    private fun refreshReadyUsersByGroup() {
+        val activeUserId = (_uiState.value as? HomeUiState.UserSelected)?.user?.id ?: return
+        viewModelScope.launch {
+            _readyUsersByGroup.value = repo.getReadyUsersByGroup(activeUserId, _groups.value)
+        }
     }
 
     private fun loadActiveUser() {
@@ -126,6 +142,9 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
                 val readyCount = repo.getReadyUserCount(user.id)
                 _uiState.value = HomeUiState.UserSelected(user, c, readyCount)
             }
+        }
+        viewModelScope.launch {
+            _readyUsersByGroup.value = repo.getReadyUsersByGroup(user.id, _groups.value)
         }
     }
 

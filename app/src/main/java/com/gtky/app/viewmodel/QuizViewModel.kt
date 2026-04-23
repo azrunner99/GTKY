@@ -25,7 +25,8 @@ data class QuizUiState(
     val answeredCount: Int = 0,
     val canFinish: Boolean = false,
     val isFinished: Boolean = false,
-    val sessionResults: List<QuizResult> = emptyList()
+    val sessionResults: List<QuizResult> = emptyList(),
+    val justSkippedPerson: String? = null
 ) {
     val currentQuestion get() = questions.getOrNull(currentIndex)
     val progress get() = if (questions.isEmpty()) 0f else currentIndex.toFloat() / questions.size
@@ -88,6 +89,7 @@ class QuizViewModel(
 
     fun skipPerson() {
         val state = _uiState.value
+        val skippedName = state.currentQuestion?.subjectUser?.name
         val currentSubjectId = state.currentQuestion?.subjectUser?.id ?: return
         val remaining = state.questions.drop(state.currentIndex + 1)
             .filter { it.subjectUser.id != currentSubjectId }
@@ -99,10 +101,15 @@ class QuizViewModel(
                 it.copy(
                     questions = kept,
                     selectedAnswer = null,
-                    isAnswerRevealed = false
+                    isAnswerRevealed = false,
+                    justSkippedPerson = skippedName
                 )
             }
         }
+    }
+
+    fun clearSkipToast() {
+        _uiState.update { it.copy(justSkippedPerson = null) }
     }
 
     fun nextQuestion() {

@@ -95,7 +95,9 @@ class GTKYRepository(val db: GTKYDatabase) {
             getAllUsersWithMinAnswers(quizTakerId)
         } else {
             groupIds.flatMap { gId ->
-                db.userDao().getQuizEligibleUsersInGroup(gId).filter { it.id != quizTakerId }
+                db.userDao().getUsersInGroup(gId).first()
+                    .filter { it.id != quizTakerId &&
+                        db.surveyAnswerDao().getAnswerCountForUserSync(it.id) >= Constants.QUIZ_UNLOCK_THRESHOLD }
             }.distinctBy { it.id }
         }
         if (eligibleUsers.isEmpty()) return emptyList()
@@ -150,6 +152,16 @@ class GTKYRepository(val db: GTKYDatabase) {
             }
         }
         return entries.sortedByDescending { it.mutualScore }
+    }
+
+    suspend fun getReadyUsersByGroup(excludingUserId: Long, groups: List<Group>): Map<Long, List<User>> {
+        val allReady = getAllUsersWithMinAnswers(excludingUserId)
+        val result = mutableMapOf<Long, List<User>>(0L to allReady)
+        for (group in groups) {
+            val inGroup = db.userDao().getUsersInGroup(group.id).first()
+            result[group.id] = inGroup.filter { u -> allReady.any { it.id == u.id } }
+        }
+        return result
     }
 
     suspend fun getAlmostReadyUserCount(excludingUserId: Long): Int {

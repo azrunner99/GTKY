@@ -23,6 +23,7 @@ import com.gtky.app.ui.t
 import com.gtky.app.ui.theme.GTKYCorrect
 import com.gtky.app.ui.theme.GTKYWrong
 import com.gtky.app.viewmodel.QuizViewModel
+import kotlinx.coroutines.delay
 
 @Composable
 fun QuizScreen(
@@ -42,10 +43,16 @@ fun QuizScreen(
         return
     }
 
+    val q = state.currentQuestion
+    val subjectName = q?.subjectUser?.name
+    val titleText = if (subjectName != null)
+        t("Quiz — about $subjectName", "Quiz — sobre $subjectName")
+    else t("Quiz", "Quiz")
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(t("Quiz Time", "¡A Preguntar!")) },
+                title = { Text(titleText, maxLines = 1) },
                 navigationIcon = {
                     if (state.canFinish) {
                         IconButton(onClick = { viewModel.finishQuiz() }) {
@@ -54,58 +61,124 @@ fun QuizScreen(
                     }
                 },
                 actions = {
-                    Text(
-                        if (state.canFinish) t("Keep Going!", "¡Sigue adelante!") else t("Remaining: ${Constants.QUIZ_MIN_QUESTIONS_BEFORE_FINISH - state.answeredCount}", "Restantes: ${Constants.QUIZ_MIN_QUESTIONS_BEFORE_FINISH - state.answeredCount}"),
-                        modifier = Modifier.padding(end = 4.dp),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (state.canFinish) GTKYCorrect else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
+                    if (q != null) {
+                        Text(
+                            t("Q ${state.currentIndex + 1}/${state.questions.size}",
+                              "P ${state.currentIndex + 1}/${state.questions.size}"),
+                            modifier = Modifier.padding(end = 4.dp),
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
                     LanguageToggle()
                 }
             )
         }
     ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(24.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            when {
-                state.isLoading -> CircularProgressIndicator()
-                state.noEligibleUsers -> NoEligibleUsersContent(
-                    closeCount = state.closeCount,
-                    onGoToSurvey = onGoToSurvey,
-                    onBack = onBack
-                )
-                state.currentQuestion != null -> {
-                    val q = state.currentQuestion!!
-                    val questionTemplate = if (language == "es" && q.question.questionTemplateEs.isNotEmpty())
-                        q.question.questionTemplateEs else q.question.questionTemplate
-                    val displayOptions = if (language == "es" && q.optionsEs.isNotEmpty()) q.optionsEs else q.options
-                    val correctDisplayAnswer = if (language == "es" && q.optionsEs.isNotEmpty()) {
-                        val idx = q.options.indexOf(q.correctAnswer)
-                        q.optionsEs.getOrElse(idx) { q.correctAnswer }
-                    } else q.correctAnswer
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
 
-                    QuizQuestionContent(
-                        questionText = questionTemplate.replace("[NAME]", q.subjectUser.name),
-                        subjectName = q.subjectUser.name,
-                        displayOptions = displayOptions,
-                        englishOptions = q.options,
-                        selectedAnswer = state.selectedAnswer,
-                        correctAnswer = if (state.isAnswerRevealed) q.correctAnswer else null,
-                        correctDisplayAnswer = if (state.isAnswerRevealed) correctDisplayAnswer else null,
-                        isAnswerRevealed = state.isAnswerRevealed,
-                        answeredCount = state.answeredCount,
-                        canFinish = state.canFinish,
-                        onSelect = { viewModel.selectAnswer(it) },
-                        onNext = { viewModel.nextQuestion() },
-                        onFinish = { viewModel.finishQuiz() },
-                        onSkipPerson = { viewModel.skipPerson() }
-                    )
+            if (q != null) {
+                LinearProgressIndicator(
+                    progress = { state.progress },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (state.canFinish) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 2.dp),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Text(
+                            t("Keep Going!", "¡Sigue adelante!"),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = GTKYCorrect
+                        )
+                    }
+                }
+            }
+
+            Box(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    when {
+                        state.isLoading -> CircularProgressIndicator()
+                        state.noEligibleUsers -> NoEligibleUsersContent(
+                            closeCount = state.closeCount,
+                            onGoToSurvey = onGoToSurvey,
+                            onBack = onBack
+                        )
+                        q != null -> {
+                            val wasCorrect = state.isAnswerRevealed && state.selectedAnswer == q.correctAnswer
+
+                            LaunchedEffect(state.isAnswerRevealed, state.selectedAnswer) {
+                                if (wasCorrect) {
+                                    delay(1400)
+                                    viewModel.nextQuestion()
+                                }
+                            }
+
+                            val questionTemplate = if (language == "es" && q.question.questionTemplateEs.isNotEmpty())
+                                q.question.questionTemplateEs else q.question.questionTemplate
+                            val displayOptions = if (language == "es" && q.optionsEs.isNotEmpty()) q.optionsEs else q.options
+                            val correctDisplayAnswer = if (language == "es" && q.optionsEs.isNotEmpty()) {
+                                val idx = q.options.indexOf(q.correctAnswer)
+                                q.optionsEs.getOrElse(idx) { q.correctAnswer }
+                            } else q.correctAnswer
+
+                            QuizQuestionContent(
+                                questionText = questionTemplate.replace("[NAME]", q.subjectUser.name),
+                                subjectName = q.subjectUser.name,
+                                displayOptions = displayOptions,
+                                englishOptions = q.options,
+                                selectedAnswer = state.selectedAnswer,
+                                correctAnswer = if (state.isAnswerRevealed) q.correctAnswer else null,
+                                correctDisplayAnswer = if (state.isAnswerRevealed) correctDisplayAnswer else null,
+                                isAnswerRevealed = state.isAnswerRevealed,
+                                wasCorrect = wasCorrect,
+                                canFinish = state.canFinish,
+                                onSelect = { viewModel.selectAnswer(it) },
+                                onNext = { viewModel.nextQuestion() },
+                                onFinish = { viewModel.finishQuiz() },
+                                onSkipPerson = { viewModel.skipPerson() }
+                            )
+                        }
+                    }
+                }
+
+                if (state.justSkippedPerson != null) {
+                    LaunchedEffect(state.justSkippedPerson) {
+                        delay(1500)
+                        viewModel.clearSkipToast()
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = 32.dp),
+                        contentAlignment = Alignment.BottomCenter
+                    ) {
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                        ) {
+                            Text(
+                                text = t(
+                                    "Skipped ${state.justSkippedPerson}",
+                                    "Saltado ${state.justSkippedPerson}"
+                                ),
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -122,7 +195,7 @@ private fun QuizQuestionContent(
     correctAnswer: String?,
     correctDisplayAnswer: String?,
     isAnswerRevealed: Boolean,
-    answeredCount: Int,
+    wasCorrect: Boolean,
     canFinish: Boolean,
     onSelect: (String) -> Unit,
     onNext: () -> Unit,
@@ -197,7 +270,6 @@ private fun QuizQuestionContent(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                val wasCorrect = selectedAnswer == correctAnswer
                 Text(
                     text = if (wasCorrect) t("Correct!", "¡Correcto!")
                            else t("Nope! $subjectName chose \"$correctDisplayAnswer\"",
@@ -208,8 +280,14 @@ private fun QuizQuestionContent(
                     modifier = Modifier.padding(top = 8.dp)
                 )
                 Spacer(Modifier.height(4.dp))
-                Button(onClick = onNext, modifier = Modifier.fillMaxWidth().height(48.dp)) {
-                    Text(t("Next Question", "Siguiente pregunta"), fontSize = 15.sp)
+                if (wasCorrect) {
+                    TextButton(onClick = onNext, modifier = Modifier.fillMaxWidth()) {
+                        Text(t("Next →", "Siguiente →"), fontSize = 15.sp)
+                    }
+                } else {
+                    Button(onClick = onNext, modifier = Modifier.fillMaxWidth().height(48.dp)) {
+                        Text(t("Next Question", "Siguiente pregunta"), fontSize = 15.sp)
+                    }
                 }
                 if (canFinish) {
                     OutlinedButton(onClick = onFinish, modifier = Modifier.fillMaxWidth().height(48.dp)) {
