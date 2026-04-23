@@ -7,11 +7,14 @@ import com.gtky.app.data.entity.Group
 import com.gtky.app.data.entity.User
 import com.gtky.app.data.repository.GTKYRepository
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+
+data class FilterPreview(val availableQuestions: Int = -1)
 
 sealed class HomeUiState {
     object Loading : HomeUiState()
@@ -48,7 +51,18 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
     private val _readyUsersByGroup = MutableStateFlow<Map<Long, List<User>>>(emptyMap())
     val readyUsersByGroup: StateFlow<Map<Long, List<User>>> = _readyUsersByGroup.asStateFlow()
 
+    private val _quizzableUsers = MutableStateFlow<List<User>>(emptyList())
+    val quizzableUsers: StateFlow<List<User>> = _quizzableUsers.asStateFlow()
+
+    private val _filterPreview = MutableStateFlow(FilterPreview())
+    val filterPreview: StateFlow<FilterPreview> = _filterPreview.asStateFlow()
+
+    private val _pendingQuizSubjectId = MutableStateFlow<Long?>(null)
+    val pendingQuizSubjectId: StateFlow<Long?> = _pendingQuizSubjectId.asStateFlow()
+
     private var answerCountJob: Job? = null
+    private var quizzableUsersJob: Job? = null
+    private var filterPreviewJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -146,6 +160,30 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
         viewModelScope.launch {
             _readyUsersByGroup.value = repo.getReadyUsersByGroup(user.id, _groups.value)
         }
+        quizzableUsersJob?.cancel()
+        quizzableUsersJob = viewModelScope.launch {
+            repo.getQuizzableUsers(user.id).collect { users ->
+                _quizzableUsers.value = users
+            }
+        }
+    }
+
+    fun requestQuizWithSubject(userId: Long) {
+        _pendingQuizSubjectId.value = userId
+    }
+
+    fun clearPendingQuizSubject() {
+        _pendingQuizSubjectId.value = null
+    }
+
+    fun updateFilterPreview(groupIds: List<Long>, personIds: Set<Long>) {
+        filterPreviewJob?.cancel()
+        filterPreviewJob = viewModelScope.launch {
+            delay(200)
+            val currentUser = (_uiState.value as? HomeUiState.UserSelected)?.user ?: return@launch
+            val available = repo.countAvailableQuestions(currentUser.id, groupIds, personIds.toList())
+            _filterPreview.value = FilterPreview(available)
+        }
     }
 
     fun renameUser(userId: Long, newName: String) {
@@ -172,6 +210,7 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
         viewModelScope.launch {
             repo.clearActiveUser()
             answerCountJob?.cancel()
+            quizzableUsersJob?.cancel()
             _uiState.value = HomeUiState.NoUser()
         }
     }

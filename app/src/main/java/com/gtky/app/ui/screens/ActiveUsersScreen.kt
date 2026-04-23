@@ -22,7 +22,6 @@ import com.gtky.app.ui.LanguageToggle
 import com.gtky.app.ui.t
 import com.gtky.app.viewmodel.ActiveUsersViewModel
 import com.gtky.app.viewmodel.UserWithAnswerCount
-import kotlinx.coroutines.launch
 
 @Composable
 fun ActiveUsersScreen(
@@ -32,26 +31,6 @@ fun ActiveUsersScreen(
     onStartSubjectQuiz: (Long) -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
-    val scope = rememberCoroutineScope()
-    var pendingSubjectUser by remember { mutableStateOf<UserWithAnswerCount?>(null) }
-
-    if (pendingSubjectUser != null) {
-        val subject = pendingSubjectUser!!
-        AlertDialog(
-            onDismissRequest = { pendingSubjectUser = null },
-            title = { Text(t("Quiz about ${subject.user.name}?", "¿Quiz sobre ${subject.user.name}?")) },
-            text = { Text(t("Start a quiz session focused on ${subject.user.name}.", "Iniciar una sesión de quiz sobre ${subject.user.name}.")) },
-            confirmButton = {
-                Button(onClick = {
-                    onStartSubjectQuiz(subject.user.id)
-                    pendingSubjectUser = null
-                }) { Text(t("Start Quiz", "Iniciar Quiz")) }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingSubjectUser = null }) { Text(t("Cancel", "Cancelar")) }
-            }
-        )
-    }
 
     Scaffold(
         topBar = {
@@ -123,7 +102,7 @@ fun ActiveUsersScreen(
                             userWithCount = userWithCount,
                             isCurrentUser = isCurrentUser,
                             onClick = if (userWithCount.isEligible && !isCurrentUser)
-                                ({ pendingSubjectUser = userWithCount }) else null
+                                ({ onStartSubjectQuiz(userWithCount.user.id) }) else null
                         )
                         HorizontalDivider()
                     }

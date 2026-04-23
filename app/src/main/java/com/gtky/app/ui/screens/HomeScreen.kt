@@ -1,12 +1,18 @@
 package com.gtky.app.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +30,7 @@ import com.gtky.app.data.entity.User
 import com.gtky.app.ui.LanguageToggle
 import com.gtky.app.ui.plural
 import com.gtky.app.ui.t
+import com.gtky.app.viewmodel.FilterPreview
 import com.gtky.app.viewmodel.HomeUiState
 import com.gtky.app.viewmodel.HomeViewModel
 
@@ -31,7 +38,7 @@ import com.gtky.app.viewmodel.HomeViewModel
 fun HomeScreen(
     viewModel: HomeViewModel,
     onStartSurvey: (Long) -> Unit,
-    onGoToQuiz: (Long, String) -> Unit,
+    onGoToQuiz: (Long, String, String) -> Unit,
     onGoToConnections: () -> Unit,
     onGoToActiveUsers: () -> Unit,
     onGoToGroups: () -> Unit,
@@ -41,7 +48,9 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsState()
     val allUsers by viewModel.allUsers.collectAsState()
     val groups by viewModel.groups.collectAsState()
-    val readyUsersByGroup by viewModel.readyUsersByGroup.collectAsState()
+    val quizzableUsers by viewModel.quizzableUsers.collectAsState()
+    val filterPreview by viewModel.filterPreview.collectAsState()
+    val pendingSubjectId by viewModel.pendingQuizSubjectId.collectAsState()
 
     when (val state = uiState) {
         is HomeUiState.Loading -> {
@@ -88,16 +97,20 @@ fun HomeScreen(
                 readyCount = state.readyCount,
                 renameError = state.renameError,
                 groups = groups,
-                readyUsersByGroup = readyUsersByGroup,
+                quizzableUsers = quizzableUsers,
+                filterPreview = filterPreview,
+                pendingQuizSubjectId = pendingSubjectId,
                 onStartSurvey = { onStartSurvey(state.user.id) },
-                onGoToQuiz = { groupIds -> onGoToQuiz(state.user.id, groupIds) },
+                onGoToQuiz = { groupIds, subjectIds -> onGoToQuiz(state.user.id, groupIds, subjectIds) },
                 onGoToConnections = onGoToConnections,
                 onGoToActiveUsers = onGoToActiveUsers,
                 onGoToGroups = onGoToGroups,
                 onGoToAdmin = onGoToAdmin,
                 onSignOut = { viewModel.signOut() },
                 onRenameUser = { newName -> viewModel.renameUser(state.user.id, newName) },
-                onClearRenameError = { viewModel.clearRenameError() }
+                onClearRenameError = { viewModel.clearRenameError() },
+                onUpdateFilterPreview = { gIds, pIds -> viewModel.updateFilterPreview(gIds, pIds) },
+                onClearPendingSubject = { viewModel.clearPendingQuizSubject() }
             )
         }
     }
@@ -208,20 +221,30 @@ private fun UserHomeScreen(
     readyCount: Int,
     renameError: String?,
     groups: List<Group>,
-    readyUsersByGroup: Map<Long, List<User>>,
+    quizzableUsers: List<User>,
+    filterPreview: FilterPreview,
+    pendingQuizSubjectId: Long?,
     onStartSurvey: () -> Unit,
-    onGoToQuiz: (String) -> Unit,
+    onGoToQuiz: (String, String) -> Unit,
     onGoToConnections: () -> Unit,
     onGoToActiveUsers: () -> Unit,
     onGoToGroups: () -> Unit,
     onGoToAdmin: () -> Unit,
     onSignOut: () -> Unit,
     onRenameUser: (String) -> Unit,
-    onClearRenameError: () -> Unit
+    onClearRenameError: () -> Unit,
+    onUpdateFilterPreview: (List<Long>, Set<Long>) -> Unit,
+    onClearPendingSubject: () -> Unit
 ) {
-    var showQuizGroupPicker by remember { mutableStateOf(false) }
+    var showQuizFilterDialog by remember { mutableStateOf(false) }
     var showSignOutDialog by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(pendingQuizSubjectId) {
+        if (pendingQuizSubjectId != null) {
+            showQuizFilterDialog = true
+        }
+    }
 
     if (showSignOutDialog) {
         AlertDialog(
@@ -257,15 +280,22 @@ private fun UserHomeScreen(
         )
     }
 
-    if (showQuizGroupPicker) {
-        QuizGroupPickerDialog(
+    if (showQuizFilterDialog) {
+        QuizFilterDialog(
             groups = groups,
-            readyUsersByGroup = readyUsersByGroup,
-            onConfirm = { groupIds ->
-                showQuizGroupPicker = false
-                onGoToQuiz(groupIds)
+            quizzableUsers = quizzableUsers,
+            filterPreview = filterPreview,
+            preSelectedPersonIds = if (pendingQuizSubjectId != null) setOf(pendingQuizSubjectId) else emptySet(),
+            onConfirm = { groupIds, subjectIds ->
+                showQuizFilterDialog = false
+                onClearPendingSubject()
+                onGoToQuiz(groupIds, subjectIds)
             },
-            onDismiss = { showQuizGroupPicker = false }
+            onDismiss = {
+                showQuizFilterDialog = false
+                onClearPendingSubject()
+            },
+            onUpdateFilterPreview = onUpdateFilterPreview
         )
     }
 
@@ -355,10 +385,7 @@ private fun UserHomeScreen(
         }
         HomeButton(
             t("Take a Quiz", "Tomar un Quiz"),
-            onClick = {
-                if (groups.isEmpty()) onGoToQuiz("0")
-                else showQuizGroupPicker = true
-            },
+            onClick = { showQuizFilterDialog = true },
             enabled = quizEnabled,
             subtitle = quizSubtitle
         )
@@ -379,6 +406,215 @@ private fun UserHomeScreen(
             TextButton(onClick = onGoToAdmin) { Text(t("Admin", "Admin")) }
         }
     }
+}
+
+@Composable
+private fun QuizFilterDialog(
+    groups: List<Group>,
+    quizzableUsers: List<User>,
+    filterPreview: FilterPreview,
+    preSelectedPersonIds: Set<Long> = emptySet(),
+    onConfirm: (groupIds: String, subjectIds: String) -> Unit,
+    onDismiss: () -> Unit,
+    onUpdateFilterPreview: (List<Long>, Set<Long>) -> Unit
+) {
+    var allGroupsSelected by remember { mutableStateOf(true) }
+    var selectedGroupIds by remember { mutableStateOf(groups.map { it.id }.toSet()) }
+    var selectedPersonIds by remember { mutableStateOf(preSelectedPersonIds) }
+    var expanded by remember { mutableStateOf(preSelectedPersonIds.isNotEmpty()) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    val nobodyReady = quizzableUsers.isEmpty()
+    val filteredPersonList = remember(quizzableUsers, searchQuery) {
+        if (searchQuery.isBlank()) quizzableUsers
+        else quizzableUsers.filter { it.name.contains(searchQuery, ignoreCase = true) }
+    }
+
+    // Compute group ids to pass for preview
+    val effectiveGroupIds = when {
+        selectedPersonIds.isNotEmpty() -> listOf(0L)
+        allGroupsSelected -> listOf(0L)
+        selectedGroupIds.isEmpty() -> listOf(0L)
+        else -> selectedGroupIds.toList()
+    }
+
+    LaunchedEffect(allGroupsSelected, selectedGroupIds, selectedPersonIds) {
+        onUpdateFilterPreview(effectiveGroupIds, selectedPersonIds)
+    }
+
+    val showGroupIgnoredHint = selectedPersonIds.isNotEmpty() && !allGroupsSelected && selectedGroupIds.isNotEmpty()
+    val available = filterPreview.availableQuestions
+    val startEnabled = available != 0
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(t("Quiz — who to quiz about?", "Quiz — ¿sobre quién?")) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Group filter section
+                if (groups.isNotEmpty()) {
+                    Text(
+                        t("Filter by group:", "Filtrar por grupo:"),
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                    FilterChip(
+                        selected = allGroupsSelected,
+                        onClick = {
+                            allGroupsSelected = !allGroupsSelected
+                            if (allGroupsSelected) selectedGroupIds = groups.map { it.id }.toSet()
+                        },
+                        label = { Text(t("All Groups", "Todos los grupos")) }
+                    )
+                    groups.forEach { group ->
+                        FilterChip(
+                            selected = allGroupsSelected || group.id in selectedGroupIds,
+                            onClick = {
+                                if (allGroupsSelected) {
+                                    allGroupsSelected = false
+                                    selectedGroupIds = setOf(group.id)
+                                } else {
+                                    selectedGroupIds = if (group.id in selectedGroupIds)
+                                        selectedGroupIds - group.id
+                                    else
+                                        selectedGroupIds + group.id
+                                }
+                            },
+                            label = { Text(group.name) }
+                        )
+                    }
+                    HorizontalDivider()
+                }
+
+                // Person-picker section
+                val sectionLabel = when {
+                    nobodyReady -> t(
+                        "Pick specific people (nobody ready yet)",
+                        "Elegir personas específicas (nadie listo aún)"
+                    )
+                    selectedPersonIds.isEmpty() -> t(
+                        "Pick specific people (0 selected)",
+                        "Elegir personas específicas (0 seleccionadas)"
+                    )
+                    else -> t(
+                        "Pick specific people (${selectedPersonIds.size} selected)",
+                        "Elegir personas específicas (${selectedPersonIds.size} seleccionadas)"
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        sectionLabel,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = if (nobodyReady) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                                else MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (!nobodyReady) {
+                        IconButton(
+                            onClick = { expanded = !expanded },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                contentDescription = if (expanded) t("Collapse", "Colapsar") else t("Expand", "Expandir")
+                            )
+                        }
+                    }
+                }
+
+                AnimatedVisibility(visible = expanded && !nobodyReady) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = { Text(t("Search names…", "Buscar nombres…")) },
+                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        filteredPersonList.forEach { person ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = person.id in selectedPersonIds,
+                                    onCheckedChange = { checked ->
+                                        selectedPersonIds = if (checked)
+                                            selectedPersonIds + person.id
+                                        else
+                                            selectedPersonIds - person.id
+                                    }
+                                )
+                                Text(person.name, modifier = Modifier.padding(start = 4.dp))
+                            }
+                        }
+                        if (showGroupIgnoredHint) {
+                            Text(
+                                t(
+                                    "Group filter ignored while people are selected.",
+                                    "El filtro de grupo se ignora mientras hay personas seleccionadas."
+                                ),
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
+                    }
+                }
+
+                HorizontalDivider()
+
+                // Pool size indicator
+                if (available >= 0) {
+                    val (indicatorText, indicatorColor) = when {
+                        available == 0 -> Pair(
+                            t("No questions available for this selection", "No hay preguntas disponibles para esta selección"),
+                            MaterialTheme.colorScheme.error
+                        )
+                        available in 1..9 -> Pair(
+                            t("⚠ Only $available ${if (available == 1) "question" else "questions"} available",
+                              "⚠ Solo $available ${if (available == 1) "pregunta disponible" else "preguntas disponibles"}"),
+                            MaterialTheme.colorScheme.error.copy(alpha = 0.75f)
+                        )
+                        available in 10..29 -> Pair(
+                            t("$available questions available", "$available preguntas disponibles"),
+                            MaterialTheme.colorScheme.onSurface
+                        )
+                        else -> Pair(
+                            t("30 questions in this session", "30 preguntas en esta sesión"),
+                            MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    Text(indicatorText, fontSize = 13.sp, color = indicatorColor)
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val groupStr = when {
+                        selectedPersonIds.isNotEmpty() -> "0"
+                        allGroupsSelected || selectedGroupIds.isEmpty() -> "0"
+                        else -> selectedGroupIds.joinToString(",")
+                    }
+                    val subjectStr = selectedPersonIds.joinToString(",")
+                    onConfirm(groupStr, subjectStr)
+                },
+                enabled = startEnabled
+            ) { Text(t("Start Quiz", "Iniciar Quiz")) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(t("Cancel", "Cancelar")) }
+        }
+    )
 }
 
 @Composable
@@ -438,105 +674,6 @@ private fun EditNameDialog(
             Button(onClick = { onSave(name.trim()) }, enabled = name.isNotBlank()) {
                 Text(t("Save", "Guardar"))
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(t("Cancel", "Cancelar")) }
-        }
-    )
-}
-
-@Composable
-private fun QuizGroupPickerDialog(
-    groups: List<Group>,
-    readyUsersByGroup: Map<Long, List<User>>,
-    onConfirm: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var allSelected by remember { mutableStateOf(true) }
-    var selectedIds by remember { mutableStateOf(groups.map { it.id }.toSet()) }
-
-    val readyUsers = remember(allSelected, selectedIds, readyUsersByGroup) {
-        if (allSelected) readyUsersByGroup[0L] ?: emptyList()
-        else selectedIds.flatMap { readyUsersByGroup[it] ?: emptyList() }.distinctBy { it.id }
-    }
-    val readyCount = readyUsers.size
-    val previewLine: String? = if (readyCount == 0) null else {
-        val names = readyUsers.take(3).joinToString(", ") { it.name }
-        if (readyCount > 3) "$names ${t("and ${readyCount - 3} more", "y ${readyCount - 3} más")}" else names
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(t("Quiz — choose groups", "Quiz — elige grupos")) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    t("Include questions from:", "Incluir preguntas de:"),
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
-                FilterChip(
-                    selected = allSelected,
-                    onClick = {
-                        allSelected = !allSelected
-                        if (allSelected) selectedIds = groups.map { it.id }.toSet()
-                    },
-                    label = { Text(t("All Groups", "Todos los grupos")) }
-                )
-                HorizontalDivider()
-                groups.forEach { group ->
-                    FilterChip(
-                        selected = allSelected || group.id in selectedIds,
-                        onClick = {
-                            if (allSelected) {
-                                allSelected = false
-                                selectedIds = setOf(group.id)
-                            } else {
-                                selectedIds = if (group.id in selectedIds)
-                                    selectedIds - group.id
-                                else
-                                    selectedIds + group.id
-                            }
-                        },
-                        label = { Text(group.name) }
-                    )
-                }
-                if (!allSelected && selectedIds.isEmpty()) {
-                    Text(
-                        t("Pick at least one group", "Elige al menos un grupo"),
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-                if (readyCount > 0) {
-                    HorizontalDivider()
-                    Text(
-                        t(
-                            "$readyCount ${if (readyCount == 1) "person" else "people"} ready to quiz about",
-                            "$readyCount ${if (readyCount == 1) "persona lista" else "personas listas"} para preguntar"
-                        ),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    if (previewLine != null) {
-                        Text(
-                            previewLine,
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val encoded = if (allSelected) "0" else selectedIds.joinToString(",")
-                    onConfirm(encoded)
-                },
-                enabled = allSelected || selectedIds.isNotEmpty()
-            ) { Text(t("Start Quiz", "Iniciar Quiz")) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(t("Cancel", "Cancelar")) }

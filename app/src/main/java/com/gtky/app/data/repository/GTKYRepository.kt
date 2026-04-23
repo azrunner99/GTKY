@@ -7,9 +7,62 @@ import com.gtky.app.data.entity.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
+import kotlin.random.Random
+
+// Internal top-level functions — testable without DB access
+
+internal fun resolveEligibleSubjects(
+    quizTakerId: Long,
+    groupIds: List<Long>,
+    subjectUserIds: List<Long>,
+    allUsers: List<User>,
+    answerCounts: Map<Long, Int>,
+    groupMemberships: Map<Long, List<Long>>  // groupId -> list of userIds
+): List<User> {
+    val threshold = Constants.QUIZ_UNLOCK_THRESHOLD
+    return when {
+        subjectUserIds.isNotEmpty() -> {
+            val subjectSet = subjectUserIds.toSet()
+            allUsers.filter { it.id != quizTakerId && it.id in subjectSet && (answerCounts[it.id] ?: 0) >= threshold }
+        }
+        groupIds.isEmpty() || 0L in groupIds -> {
+            allUsers.filter { it.id != quizTakerId && (answerCounts[it.id] ?: 0) >= threshold }
+        }
+        else -> {
+            val eligibleIds = groupIds.flatMap { gId -> groupMemberships[gId] ?: emptyList() }.toSet()
+            allUsers.filter { it.id != quizTakerId && it.id in eligibleIds && (answerCounts[it.id] ?: 0) >= threshold }
+                .distinctBy { it.id }
+        }
+    }
+}
+
+internal fun buildQuizSessionFromPools(
+    subjectPools: MutableMap<User, MutableList<QuizQuestion>>,
+    timesQuizzed: Map<Long, Int>,
+    count: Int
+): List<QuizQuestion> {
+    val questions = mutableListOf<QuizQuestion>()
+    while (questions.size < count && subjectPools.isNotEmpty()) {
+        val entries = subjectPools.entries.toList()
+        val weights = entries.map { (user, _) -> 1.0 / (1.0 + (timesQuizzed[user.id] ?: 0).toDouble()) }
+        val totalWeight = weights.sum()
+        var pick = Random.nextDouble() * totalWeight
+        var chosenKey: User? = null
+        for ((entry, weight) in entries.zip(weights)) {
+            pick -= weight
+            if (pick <= 0.0) { chosenKey = entry.key; break }
+        }
+        if (chosenKey == null) chosenKey = entries.last().key
+        val pool = subjectPools[chosenKey]!!
+        questions.add(pool.removeFirst())
+        if (pool.isEmpty()) subjectPools.remove(chosenKey)
+    }
+    return questions
+}
 
 data class QuizQuestion(
     val question: SurveyQuestion,
@@ -90,65 +143,69 @@ class GTKYRepository(val db: GTKYDatabase) {
         db.surveyAnswerDao().getAllAnswersForUser(userId)
 
     // Quiz
-    suspend fun buildQuizSession(quizTakerId: Long, groupIds: List<Long>, count: Int = 30): List<QuizQuestion> {
-        val eligibleUsers = if (groupIds.isEmpty() || 0L in groupIds) {
-            getAllUsersWithMinAnswers(quizTakerId)
-        } else {
-            groupIds.flatMap { gId ->
-                db.userDao().getUsersInGroup(gId).first()
-                    .filter { it.id != quizTakerId &&
-                        db.surveyAnswerDao().getAnswerCountForUserSync(it.id) >= Constants.QUIZ_UNLOCK_THRESHOLD }
-            }.distinctBy { it.id }
-        }
+    suspend fun buildQuizSession(
+        quizTakerId: Long,
+        groupIds: List<Long>,
+        subjectUserIds: List<Long> = emptyList(),
+        count: Int = 30
+    ): List<QuizQuestion> {
+        val eligibleUsers = getEligibleSubjects(quizTakerId, groupIds, subjectUserIds)
         if (eligibleUsers.isEmpty()) return emptyList()
 
-        val questions = mutableListOf<QuizQuestion>()
-        val shuffledUsers = eligibleUsers.shuffled()
-
-        for (subjectUser in shuffledUsers) {
+        val subjectPools = mutableMapOf<User, MutableList<QuizQuestion>>()
+        for (subjectUser in eligibleUsers) {
             val alreadyAttempted = db.quizResultDao()
                 .getAlreadyAttemptedQuestionIds(quizTakerId, subjectUser.id).toSet()
             val answered = db.surveyQuestionDao()
                 .getAnsweredQuestionsForUser(subjectUser.id, 50)
                 .filter { it.id !in alreadyAttempted }
+            if (answered.isEmpty()) continue
 
+            val pool = mutableListOf<QuizQuestion>()
             for (q in answered.shuffled()) {
                 val correctAnswer = db.surveyAnswerDao()
                     .getAnswerForUserQuestion(subjectUser.id, q.id) ?: continue
                 val enOpts = parseOptions(q.optionsJson)
                 val esOpts = parseOptions(q.optionsJsonEs).takeIf { it.size == enOpts.size } ?: enOpts
                 val shuffledPairs = enOpts.zip(esOpts).shuffled()
-                val options = shuffledPairs.map { it.first }
-                val optionsEs = shuffledPairs.map { it.second }
-                questions.add(QuizQuestion(q, subjectUser, options, optionsEs, correctAnswer))
-                if (questions.size >= count) break
+                pool.add(QuizQuestion(q, subjectUser, shuffledPairs.map { it.first }, shuffledPairs.map { it.second }, correctAnswer))
             }
-            if (questions.size >= count) break
+            if (pool.isNotEmpty()) subjectPools[subjectUser] = pool
         }
-        return questions.shuffled()
+        if (subjectPools.isEmpty()) return emptyList()
+
+        val timesQuizzed = subjectPools.keys.associate { user ->
+            user.id to db.quizResultDao().getAttemptCount(quizTakerId, user.id)
+        }
+        return buildQuizSessionFromPools(subjectPools, timesQuizzed, count)
     }
 
-    suspend fun buildQuizSessionForSubject(quizTakerId: Long, subjectUserId: Long, count: Int = 30): List<QuizQuestion> {
-        val subjectUser = db.userDao().getUserById(subjectUserId) ?: return emptyList()
-        val alreadyAttempted = db.quizResultDao()
-            .getAlreadyAttemptedQuestionIds(quizTakerId, subjectUserId).toSet()
-        val answered = db.surveyQuestionDao()
-            .getAnsweredQuestionsForUser(subjectUserId, count * 2)
-            .filter { it.id !in alreadyAttempted }
-        if (answered.isEmpty()) return emptyList()
-
-        val questions = mutableListOf<QuizQuestion>()
-        for (q in answered.shuffled()) {
-            val correctAnswer = db.surveyAnswerDao()
-                .getAnswerForUserQuestion(subjectUserId, q.id) ?: continue
-            val enOpts = parseOptions(q.optionsJson)
-            val esOpts = parseOptions(q.optionsJsonEs).takeIf { it.size == enOpts.size } ?: enOpts
-            val shuffledPairs = enOpts.zip(esOpts).shuffled()
-            questions.add(QuizQuestion(q, subjectUser, shuffledPairs.map { it.first }, shuffledPairs.map { it.second }, correctAnswer))
-            if (questions.size >= count) break
+    suspend fun countAvailableQuestions(
+        quizTakerId: Long,
+        groupIds: List<Long>,
+        subjectUserIds: List<Long> = emptyList()
+    ): Int {
+        val eligibleUsers = getEligibleSubjects(quizTakerId, groupIds, subjectUserIds)
+        if (eligibleUsers.isEmpty()) return 0
+        var total = 0
+        for (subjectUser in eligibleUsers) {
+            val alreadyAttempted = db.quizResultDao()
+                .getAlreadyAttemptedQuestionIds(quizTakerId, subjectUser.id).toSet()
+            total += db.surveyQuestionDao()
+                .getAnsweredQuestionsForUser(subjectUser.id, 50)
+                .count { it.id !in alreadyAttempted }
         }
-        return questions.shuffled()
+        return total
     }
+
+    fun getQuizzableUsers(excludeUserId: Long): Flow<List<User>> =
+        combine(getAllUsers(), db.surveyAnswerDao().getAnswerCountForUser(0L)) { users, _ -> users }
+            .map { users ->
+                users.filter { user ->
+                    user.id != excludeUserId &&
+                    db.surveyAnswerDao().getAnswerCountForUserSync(user.id) >= Constants.QUIZ_UNLOCK_THRESHOLD
+                }
+            }
 
     suspend fun saveQuizResults(results: List<QuizResult>) =
         db.quizResultDao().insertResults(results)
@@ -205,6 +262,20 @@ class GTKYRepository(val db: GTKYDatabase) {
             user.id != excludeId &&
             db.surveyAnswerDao().getAnswerCountForUserSync(user.id) >= Constants.QUIZ_UNLOCK_THRESHOLD
         }
+    }
+
+    private suspend fun getEligibleSubjects(
+        quizTakerId: Long,
+        groupIds: List<Long>,
+        subjectUserIds: List<Long>
+    ): List<User> {
+        val allUsers = db.userDao().getAllUsers().first()
+        val answerCounts = allUsers.associate { it.id to db.surveyAnswerDao().getAnswerCountForUserSync(it.id) }
+        val groupMemberships: Map<Long, List<Long>> =
+            if (subjectUserIds.isEmpty() && groupIds.isNotEmpty() && 0L !in groupIds) {
+                groupIds.associate { gId -> gId to db.userDao().getUsersInGroup(gId).first().map { it.id } }
+            } else emptyMap()
+        return resolveEligibleSubjects(quizTakerId, groupIds, subjectUserIds, allUsers, answerCounts, groupMemberships)
     }
 
     private suspend fun getDirectScore(fromId: Long, toId: Long): Double {

@@ -17,15 +17,15 @@ object Routes {
     const val HOME = "home"
     const val PICK_USER = "pick_user"
     const val SURVEY = "survey/{userId}"
-    const val QUIZ = "quiz/{userId}/{groupIds}?subjectId={subjectId}"
+    const val QUIZ = "quiz/{userId}/{groupIds}?subjectIds={subjectIds}"
     const val CONNECTIONS = "connections"
     const val ACTIVE_USERS = "active_users"
     const val GROUPS = "groups"
     const val ADMIN = "admin"
 
     fun survey(userId: Long) = "survey/$userId"
-    fun quiz(userId: Long, groupIds: String) = "quiz/$userId/$groupIds"
-    fun quizSubject(quizTakerId: Long, subjectId: Long) = "quiz/$quizTakerId/0?subjectId=$subjectId"
+    fun quiz(userId: Long, groupIds: String, subjectIds: String = "") =
+        if (subjectIds.isBlank()) "quiz/$userId/$groupIds" else "quiz/$userId/$groupIds?subjectIds=$subjectIds"
 }
 
 @Composable
@@ -40,7 +40,9 @@ fun GTKYNavGraph(navController: NavHostController) {
             HomeScreen(
                 viewModel = vm,
                 onStartSurvey = { userId -> navController.navigate(Routes.survey(userId)) },
-                onGoToQuiz = { userId, groupIds -> navController.navigate(Routes.quiz(userId, groupIds)) },
+                onGoToQuiz = { userId, groupIds, subjectIds ->
+                    navController.navigate(Routes.quiz(userId, groupIds, subjectIds))
+                },
                 onGoToConnections = { navController.navigate(Routes.CONNECTIONS) },
                 onGoToActiveUsers = { navController.navigate(Routes.ACTIVE_USERS) },
                 onGoToGroups = { navController.navigate(Routes.GROUPS) },
@@ -82,14 +84,16 @@ fun GTKYNavGraph(navController: NavHostController) {
             arguments = listOf(
                 navArgument("userId") { type = NavType.LongType },
                 navArgument("groupIds") { type = NavType.StringType },
-                navArgument("subjectId") { type = NavType.LongType; defaultValue = -1L }
+                navArgument("subjectIds") { type = NavType.StringType; defaultValue = "" }
             )
         ) { backStack ->
             val userId = backStack.arguments!!.getLong("userId")
             val groupIds = backStack.arguments!!.getString("groupIds") ?: "0"
             val groupIdList = groupIds.split(",").mapNotNull { it.toLongOrNull() }
-            val subjectId = backStack.arguments!!.getLong("subjectId")
-            val vm: QuizViewModel = viewModel(factory = QuizViewModel.Factory(repo, userId, groupIdList, subjectId))
+            val subjectIdsStr = backStack.arguments!!.getString("subjectIds") ?: ""
+            val subjectIdList = if (subjectIdsStr.isBlank()) emptyList()
+                else subjectIdsStr.split(",").mapNotNull { it.toLongOrNull() }
+            val vm: QuizViewModel = viewModel(factory = QuizViewModel.Factory(repo, userId, groupIdList, subjectIdList))
             QuizScreen(
                 viewModel = vm,
                 onBack = { navController.popBackStack() },
@@ -107,16 +111,18 @@ fun GTKYNavGraph(navController: NavHostController) {
         }
 
         composable(Routes.ACTIVE_USERS) {
+            val homeVm: HomeViewModel = viewModel(
+                viewModelStoreOwner = navController.getBackStackEntry(Routes.HOME),
+                factory = HomeViewModel.Factory(repo)
+            )
             val vm: ActiveUsersViewModel = viewModel(factory = ActiveUsersViewModel.Factory(repo))
-            val activeUsersState by vm.uiState.collectAsState()
             ActiveUsersScreen(
                 viewModel = vm,
                 onBack = { navController.popBackStack() },
                 onGoToGroups = { navController.navigate(Routes.GROUPS) },
                 onStartSubjectQuiz = { subjectUserId ->
-                    activeUsersState.activeUserId?.let { quizTakerId ->
-                        navController.navigate(Routes.quizSubject(quizTakerId, subjectUserId))
-                    }
+                    homeVm.requestQuizWithSubject(subjectUserId)
+                    navController.popBackStack(Routes.HOME, inclusive = false)
                 }
             )
         }

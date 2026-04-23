@@ -38,7 +38,7 @@ class QuizViewModel(
     private val repo: GTKYRepository,
     private val quizTakerId: Long,
     private val groupIds: List<Long>,
-    private val subjectId: Long = -1L
+    private val subjectIds: List<Long> = emptyList()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(QuizUiState())
@@ -52,22 +52,17 @@ class QuizViewModel(
 
     private fun loadQuiz() {
         viewModelScope.launch {
-            if (subjectId != -1L) {
-                val subjectUser = repo.getUserById(subjectId)
-                val questions = repo.buildQuizSessionForSubject(quizTakerId, subjectId, 30)
-                if (questions.isEmpty()) {
+            val questions = repo.buildQuizSession(quizTakerId, groupIds, subjectIds, 30)
+            if (questions.isEmpty()) {
+                if (subjectIds.size == 1) {
+                    val subjectUser = repo.getUserById(subjectIds[0])
                     _uiState.update { it.copy(isLoading = false, noQuestionsForSubject = true, subjectDisplayName = subjectUser?.name) }
                 } else {
-                    _uiState.update { it.copy(isLoading = false, questions = questions) }
-                }
-            } else {
-                val questions = repo.buildQuizSession(quizTakerId, groupIds, 30)
-                if (questions.isEmpty()) {
                     val closeCount = repo.getAlmostReadyUserCount(quizTakerId)
                     _uiState.update { it.copy(isLoading = false, noEligibleUsers = true, closeCount = closeCount) }
-                } else {
-                    _uiState.update { it.copy(isLoading = false, questions = questions) }
                 }
+            } else {
+                _uiState.update { it.copy(isLoading = false, questions = questions) }
             }
         }
     }
@@ -152,10 +147,10 @@ class QuizViewModel(
         private val repo: GTKYRepository,
         private val quizTakerId: Long,
         private val groupIds: List<Long>,
-        private val subjectId: Long = -1L
+        private val subjectIds: List<Long> = emptyList()
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            QuizViewModel(repo, quizTakerId, groupIds, subjectId) as T
+            QuizViewModel(repo, quizTakerId, groupIds, subjectIds) as T
     }
 }

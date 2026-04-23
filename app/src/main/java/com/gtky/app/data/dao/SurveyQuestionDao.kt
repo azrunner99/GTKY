@@ -18,9 +18,8 @@ interface SurveyQuestionDao {
             SELECT questionId FROM survey_answers WHERE userId = :userId
         )
         ORDER BY RANDOM()
-        LIMIT :limit
     """)
-    suspend fun getUnansweredQuestionsForUser(userId: Long, limit: Int = 20): List<SurveyQuestion>
+    suspend fun getUnansweredQuestionsForUser(userId: Long): List<SurveyQuestion>
 
     @Query("SELECT COUNT(*) FROM survey_questions")
     suspend fun getQuestionCount(): Int
@@ -33,6 +32,9 @@ interface SurveyQuestionDao {
 
     @Query("UPDATE survey_questions SET questionTemplateEs = :templateEs, optionsJsonEs = :optionsJsonEs WHERE id = :id")
     suspend fun updateSpanish(id: Long, templateEs: String, optionsJsonEs: String)
+
+    @Query("UPDATE survey_questions SET optionsJson = :optionsJson, optionsJsonEs = :optionsJsonEs WHERE questionTemplate = :template")
+    suspend fun updateOptionsByTemplate(template: String, optionsJson: String, optionsJsonEs: String)
 
     @Query("""
         SELECT sq.* FROM survey_questions sq
