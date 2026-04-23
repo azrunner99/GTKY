@@ -1,6 +1,7 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.gtky.app.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -14,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.gtky.app.Constants
 import com.gtky.app.data.entity.User
 import com.gtky.app.data.repository.ConnectionEntry
 import com.gtky.app.ui.LanguageToggle
@@ -22,14 +24,46 @@ import com.gtky.app.viewmodel.ConnectionDirection
 import com.gtky.app.viewmodel.ConnectionScope
 import com.gtky.app.viewmodel.ConnectionsViewModel
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 @Composable
 fun ConnectionsScreen(
     viewModel: ConnectionsViewModel,
     onBack: () -> Unit,
-    onGoToQuiz: () -> Unit = {}
+    onGoToQuiz: () -> Unit = {},
+    onGoToProfile: (Long) -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+    var pendingProfileEntry by remember { mutableStateOf<ConnectionEntry?>(null) }
+    val profileGateMessage = t(
+        "Answer ${Constants.QUIZ_UNLOCK_THRESHOLD} questions first to see others' profiles.",
+        "Responde ${Constants.QUIZ_UNLOCK_THRESHOLD} preguntas primero para ver perfiles."
+    )
+
+    pendingProfileEntry?.let { entry ->
+        AlertDialog(
+            onDismissRequest = { pendingProfileEntry = null },
+            title = { Text(t("See whose profile?", "¿Ver el perfil de quién?")) },
+            confirmButton = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { pendingProfileEntry = null; onGoToProfile(entry.userA.id) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text(entry.userA.name) }
+                    Button(
+                        onClick = { pendingProfileEntry = null; onGoToProfile(entry.userB.id) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text(entry.userB.name) }
+                    TextButton(
+                        onClick = { pendingProfileEntry = null },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text(t("Cancel", "Cancelar")) }
+                }
+            }
+        )
+    }
 
     val scopeFiltered = if (state.scope == ConnectionScope.MINE && state.activeUserId != null) {
         state.connections.filter {
@@ -71,7 +105,8 @@ fun ConnectionsScreen(
                 },
                 actions = { LanguageToggle() }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -178,7 +213,19 @@ fun ConnectionsScreen(
                                 rank = index + 1,
                                 entry = entry,
                                 isMineScope = state.scope == ConnectionScope.MINE,
-                                activeUserId = state.activeUserId
+                                activeUserId = state.activeUserId,
+                                onClick = {
+                                    if (state.myAnswerCount < Constants.QUIZ_UNLOCK_THRESHOLD) {
+                                        coroutineScope.launch {
+                                            snackbarHostState.showSnackbar(profileGateMessage)
+                                        }
+                                    } else if (state.scope == ConnectionScope.MINE && state.activeUserId != null) {
+                                        val otherId = if (entry.userA.id == state.activeUserId) entry.userB.id else entry.userA.id
+                                        onGoToProfile(otherId)
+                                    } else {
+                                        pendingProfileEntry = entry
+                                    }
+                                }
                             )
                             HorizontalDivider()
                         }
@@ -207,7 +254,8 @@ private fun MutualConnectionRow(
     rank: Int,
     entry: ConnectionEntry,
     isMineScope: Boolean,
-    activeUserId: Long?
+    activeUserId: Long?,
+    onClick: (() -> Unit)? = null
 ) {
     val primaryLabel: String
     val scoreLineA: String?
@@ -231,6 +279,7 @@ private fun MutualConnectionRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

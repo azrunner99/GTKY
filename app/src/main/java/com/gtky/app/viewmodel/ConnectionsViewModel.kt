@@ -8,6 +8,7 @@ import com.gtky.app.data.repository.GTKYRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -19,7 +20,8 @@ data class ConnectionsUiState(
     val connections: List<ConnectionEntry> = emptyList(),
     val scope: ConnectionScope = ConnectionScope.MINE,
     val direction: ConnectionDirection = ConnectionDirection.MUTUAL,
-    val activeUserId: Long? = null
+    val activeUserId: Long? = null,
+    val myAnswerCount: Int = 0
 )
 
 class ConnectionsViewModel(private val repo: GTKYRepository) : ViewModel() {
@@ -34,13 +36,15 @@ class ConnectionsViewModel(private val repo: GTKYRepository) : ViewModel() {
     fun loadConnections() {
         viewModelScope.launch {
             val activeUserId = repo.getActiveUserId()
+            val myCount = if (activeUserId != null) repo.getAnswerCountForUser(activeUserId).first() else 0
             repo.getAllUsers().collect { users ->
                 val entries = repo.getAllConnectionEntries(users)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         connections = entries,
-                        activeUserId = activeUserId
+                        activeUserId = activeUserId,
+                        myAnswerCount = myCount
                     )
                 }
             }

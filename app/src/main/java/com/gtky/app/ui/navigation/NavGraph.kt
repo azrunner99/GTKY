@@ -12,6 +12,7 @@ import com.gtky.app.GTKYApplication
 import com.gtky.app.ui.screens.*
 import com.gtky.app.viewmodel.*
 import com.gtky.app.viewmodel.GroupsViewModel
+import com.gtky.app.viewmodel.ProfileViewModel
 
 object Routes {
     const val HOME = "home"
@@ -22,10 +23,12 @@ object Routes {
     const val ACTIVE_USERS = "active_users"
     const val GROUPS = "groups"
     const val ADMIN = "admin"
+    const val PROFILE = "profile/{userId}"
 
     fun survey(userId: Long) = "survey/$userId"
     fun quiz(userId: Long, groupIds: String, subjectIds: String = "") =
         if (subjectIds.isBlank()) "quiz/$userId/$groupIds" else "quiz/$userId/$groupIds?subjectIds=$subjectIds"
+    fun profile(userId: Long) = "profile/$userId"
 }
 
 @Composable
@@ -117,7 +120,8 @@ fun GTKYNavGraph(navController: NavHostController) {
                 onQuizAboutSubject = { subjectId ->
                     homeVm.requestQuizWithSubject(subjectId)
                     navController.popBackStack(Routes.HOME, inclusive = false)
-                }
+                },
+                onGoToProfile = { userId -> navController.navigate(Routes.profile(userId)) }
             )
         }
 
@@ -133,8 +137,18 @@ fun GTKYNavGraph(navController: NavHostController) {
                 onGoToQuiz = {
                     homeVm.requestOpenQuizDialog()
                     navController.popBackStack(Routes.HOME, inclusive = false)
-                }
+                },
+                onGoToProfile = { userId -> navController.navigate(Routes.profile(userId)) }
             )
+        }
+
+        composable(
+            Routes.PROFILE,
+            arguments = listOf(navArgument("userId") { type = NavType.LongType })
+        ) { backStack ->
+            val userId = backStack.arguments!!.getLong("userId")
+            val vm: ProfileViewModel = viewModel(factory = ProfileViewModel.Factory(repo, userId))
+            ProfileScreen(viewModel = vm, onBack = { navController.popBackStack() })
         }
 
         composable(Routes.ACTIVE_USERS) {

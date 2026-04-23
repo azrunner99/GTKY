@@ -3,6 +3,7 @@ package com.gtky.app.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,7 +36,8 @@ fun QuizScreen(
     viewModel: QuizViewModel,
     onBack: () -> Unit,
     onGoToSurvey: () -> Unit = {},
-    onQuizAboutSubject: (Long) -> Unit = {}
+    onQuizAboutSubject: (Long) -> Unit = {},
+    onGoToProfile: (Long) -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     val language = LocalAppLanguage.current
@@ -66,7 +68,8 @@ fun QuizScreen(
             sessionResults = state.sessionResults,
             questions = state.questions,
             onBack = onBack,
-            onQuizAboutSubject = onQuizAboutSubject
+            onQuizAboutSubject = onQuizAboutSubject,
+            onGoToProfile = onGoToProfile
         )
         return
     }
@@ -342,7 +345,8 @@ private fun QuizResultsScreen(
     sessionResults: List<QuizResult>,
     questions: List<QuizQuestion>,
     onBack: () -> Unit,
-    onQuizAboutSubject: (Long) -> Unit = {}
+    onQuizAboutSubject: (Long) -> Unit = {},
+    onGoToProfile: (Long) -> Unit = {}
 ) {
     val pct = if (total == 0) 0 else (correct * 100 / total)
 
@@ -380,7 +384,10 @@ private fun QuizResultsScreen(
                     else -> MaterialTheme.colorScheme.onBackground
                 }
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onGoToProfile(score.userId) }
+                        .padding(vertical = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(score.name, fontSize = 15.sp, fontWeight = FontWeight.Medium)
