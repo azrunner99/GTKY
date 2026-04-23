@@ -57,11 +57,27 @@ fun GroupsScreen(
                 }
             } else if (state.groups.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        t("No groups yet.\nAsk an admin to create one.", "Aún no hay grupos.\nPide a un administrador que cree uno."),
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
-                    )
+                    Column(
+                        modifier = Modifier.padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            t("No groups yet.\nAsk an admin to create one.", "Aún no hay grupos.\nPide a un administrador que cree uno."),
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+                        )
+                        Text(
+                            t("The admin PIN unlocks group creation on the home screen → Admin.", "El PIN de admin desbloquea la creación de grupos en la pantalla principal → Admin."),
+                            fontSize = 12.sp,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f)
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        TextButton(onClick = onBack) {
+                            Text(t("Continue without groups", "Continuar sin grupos"))
+                        }
+                    }
                 }
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {

@@ -228,11 +228,16 @@ private fun AllAnsweredContent(onBack: () -> Unit) {
             fontSize = 20.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center
         )
         Text(
-            t("Check back later — new questions may be added.", "Vuelve más tarde, se pueden agregar nuevas preguntas."),
+            t("You're fully set up. Now go learn about everyone else.", "Ya estás listo. Ahora ve a conocer a los demás."),
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
         )
-        Button(onClick = onBack) { Text(t("Back Home", "Inicio")) }
+        Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
+            Text(t("Take a Quiz", "Tomar un Quiz"))
+        }
+        OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
+            Text(t("Back Home", "Inicio"))
+        }
     }
 }
 

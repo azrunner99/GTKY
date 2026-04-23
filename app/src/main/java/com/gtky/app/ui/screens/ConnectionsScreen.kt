@@ -129,21 +129,45 @@ fun ConnectionsScreen(
                 }
             } else if (isEmpty) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = if (state.scope == ConnectionScope.MINE)
-                            t(
-                                "You haven't been in any quizzes yet. Take a quiz, or wait for someone to take a quiz about you.",
-                                "Aún no has participado en ningún quiz. Toma un quiz o espera que alguien tome uno sobre ti."
+                    if (state.scope == ConnectionScope.MINE) {
+                        Column(
+                            modifier = Modifier.padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                t("No connections yet", "Sin conexiones aún"),
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center
                             )
-                        else
+                            Text(
+                                t(
+                                    "Connections appear when you take a quiz about someone, or when they take one about you.",
+                                    "Las conexiones aparecen cuando tomas un quiz sobre alguien, o cuando ellos toman uno sobre ti."
+                                ),
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
+                                Text(t("Take a Quiz", "Tomar un Quiz"))
+                            }
+                            TextButton(onClick = onBack) {
+                                Text(t("Answer more survey questions", "Responder más preguntas de la encuesta"))
+                            }
+                        }
+                    } else {
+                        Text(
                             t(
                                 "No connections yet.\nComplete some quizzes to see how well you know each other!",
                                 "Aún no hay conexiones.\n¡Completa algunos quizzes para ver qué tan bien se conocen!"
                             ),
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                        modifier = Modifier.padding(32.dp)
-                    )
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                            modifier = Modifier.padding(32.dp)
+                        )
+                    }
                 }
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {

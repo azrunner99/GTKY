@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 data class QuizUiState(
     val isLoading: Boolean = true,
     val noEligibleUsers: Boolean = false,
+    val closeCount: Int = 0,
     val questions: List<QuizQuestion> = emptyList(),
     val currentIndex: Int = 0,
     val selectedAnswer: String? = null,
@@ -49,7 +50,8 @@ class QuizViewModel(
         viewModelScope.launch {
             val questions = repo.buildQuizSession(quizTakerId, groupIds, 30)
             if (questions.isEmpty()) {
-                _uiState.update { it.copy(isLoading = false, noEligibleUsers = true) }
+                val closeCount = repo.getAlmostReadyUserCount(quizTakerId)
+                _uiState.update { it.copy(isLoading = false, noEligibleUsers = true, closeCount = closeCount) }
             } else {
                 _uiState.update { it.copy(isLoading = false, questions = questions) }
             }

@@ -89,7 +89,12 @@ fun GTKYNavGraph(navController: NavHostController) {
             val vm: QuizViewModel = viewModel(factory = QuizViewModel.Factory(repo, userId, groupIdList))
             QuizScreen(
                 viewModel = vm,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onGoToSurvey = {
+                    navController.navigate(Routes.survey(userId)) {
+                        popUpTo(Routes.HOME) { inclusive = false }
+                    }
+                }
             )
         }
 

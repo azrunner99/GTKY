@@ -27,7 +27,8 @@ import com.gtky.app.viewmodel.QuizViewModel
 @Composable
 fun QuizScreen(
     viewModel: QuizViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onGoToSurvey: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     val language = LocalAppLanguage.current
@@ -74,7 +75,11 @@ fun QuizScreen(
         ) {
             when {
                 state.isLoading -> CircularProgressIndicator()
-                state.noEligibleUsers -> NoEligibleUsersContent(onBack = onBack)
+                state.noEligibleUsers -> NoEligibleUsersContent(
+                    closeCount = state.closeCount,
+                    onGoToSurvey = onGoToSurvey,
+                    onBack = onBack
+                )
                 state.currentQuestion != null -> {
                     val q = state.currentQuestion!!
                     val questionTemplate = if (language == "es" && q.question.questionTemplateEs.isNotEmpty())
@@ -236,18 +241,40 @@ private fun QuizResultsScreen(correct: Int, total: Int, onBack: () -> Unit) {
 }
 
 @Composable
-private fun NoEligibleUsersContent(onBack: () -> Unit) {
+private fun NoEligibleUsersContent(
+    closeCount: Int,
+    onGoToSurvey: () -> Unit,
+    onBack: () -> Unit
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(t("Not enough players yet!", "¡Aún no hay suficientes jugadores!"), fontSize = 20.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
         Text(
-            t("Other users need to answer at least ${Constants.QUIZ_UNLOCK_THRESHOLD} survey questions before you can be quizzed on them.",
-              "Otros usuarios necesitan responder al menos ${Constants.QUIZ_UNLOCK_THRESHOLD} preguntas de la encuesta."),
+            t("Not enough players yet!", "¡Aún no hay suficientes jugadores!"),
+            fontSize = 20.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center
+        )
+        Text(
+            t(
+                "Nobody else is ready to be quizzed yet. Other players need to answer at least ${Constants.QUIZ_UNLOCK_THRESHOLD} questions first.",
+                "Nadie más está listo aún. Los demás jugadores necesitan responder al menos ${Constants.QUIZ_UNLOCK_THRESHOLD} preguntas primero."
+            ),
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
         )
-        Button(onClick = onBack) { Text(t("Back Home", "Inicio")) }
+        if (closeCount > 0) {
+            Text(
+                t("$closeCount ${if (closeCount == 1) "player is" else "players are"} almost there.",
+                  "$closeCount ${if (closeCount == 1) "jugador está" else "jugadores están"} casi listos."),
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+        Button(onClick = onGoToSurvey, modifier = Modifier.fillMaxWidth()) {
+            Text(t("Answer more questions", "Responder más preguntas"))
+        }
+        OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
+            Text(t("Back Home", "Inicio"))
+        }
     }
 }

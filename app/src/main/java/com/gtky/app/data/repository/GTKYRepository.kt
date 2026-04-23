@@ -149,6 +149,13 @@ class GTKYRepository(val db: GTKYDatabase) {
         return entries.sortedByDescending { it.mutualScore }
     }
 
+    suspend fun getAlmostReadyUserCount(excludingUserId: Long): Int {
+        val half = Constants.QUIZ_UNLOCK_THRESHOLD / 2
+        val users = db.userDao().getAllUsers().first()
+        return users.count { it.id != excludingUserId &&
+            db.surveyAnswerDao().getAnswerCountForUserSync(it.id) in half until Constants.QUIZ_UNLOCK_THRESHOLD }
+    }
+
     suspend fun getReadyUserCount(excludingUserId: Long): Int {
         val users = db.userDao().getAllUsers().first()
         return users.count { it.id != excludingUserId &&
