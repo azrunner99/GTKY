@@ -101,6 +101,10 @@ fun GTKYNavGraph(navController: NavHostController) {
             val subjectIdsStr = backStack.arguments!!.getString("subjectIds") ?: ""
             val subjectIdList = if (subjectIdsStr.isBlank()) emptyList()
                 else subjectIdsStr.split(",").mapNotNull { it.toLongOrNull() }
+            val homeVm: HomeViewModel = viewModel(
+                viewModelStoreOwner = navController.getBackStackEntry(Routes.HOME),
+                factory = HomeViewModel.Factory(repo)
+            )
             val vm: QuizViewModel = viewModel(factory = QuizViewModel.Factory(repo, userId, groupIdList, subjectIdList))
             QuizScreen(
                 viewModel = vm,
@@ -109,6 +113,10 @@ fun GTKYNavGraph(navController: NavHostController) {
                     navController.navigate(Routes.survey(userId)) {
                         popUpTo(Routes.HOME) { inclusive = false }
                     }
+                },
+                onQuizAboutSubject = { subjectId ->
+                    homeVm.requestQuizWithSubject(subjectId)
+                    navController.popBackStack(Routes.HOME, inclusive = false)
                 }
             )
         }

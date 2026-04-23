@@ -4,7 +4,9 @@ package com.gtky.app.ui.screens
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -17,6 +19,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gtky.app.Constants
+import com.gtky.app.data.entity.QuizResult
+import com.gtky.app.data.repository.QuizQuestion
 import com.gtky.app.ui.LanguageToggle
 import com.gtky.app.ui.LocalAppLanguage
 import com.gtky.app.ui.t
@@ -30,7 +34,8 @@ import kotlinx.coroutines.delay
 fun QuizScreen(
     viewModel: QuizViewModel,
     onBack: () -> Unit,
-    onGoToSurvey: () -> Unit = {}
+    onGoToSurvey: () -> Unit = {},
+    onQuizAboutSubject: (Long) -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     val language = LocalAppLanguage.current
@@ -58,7 +63,10 @@ fun QuizScreen(
         QuizResultsScreen(
             correct = state.correctCount,
             total = state.answeredCount,
-            onBack = onBack
+            sessionResults = state.sessionResults,
+            questions = state.questions,
+            onBack = onBack,
+            onQuizAboutSubject = onQuizAboutSubject
         )
         return
     }
@@ -323,22 +331,101 @@ private fun QuizQuestionContent(
     }
 }
 
+private data class SubjectScore(val userId: Long, val name: String, val correct: Int, val total: Int) {
+    val ratio: Double get() = if (total == 0) 0.0 else correct.toDouble() / total
+}
+
 @Composable
-private fun QuizResultsScreen(correct: Int, total: Int, onBack: () -> Unit) {
+private fun QuizResultsScreen(
+    correct: Int,
+    total: Int,
+    sessionResults: List<QuizResult>,
+    questions: List<QuizQuestion>,
+    onBack: () -> Unit,
+    onQuizAboutSubject: (Long) -> Unit = {}
+) {
     val pct = if (total == 0) 0 else (correct * 100 / total)
+
+    val subjectScores = remember(sessionResults, questions) {
+        val nameMap = questions.associate { it.subjectUser.id to it.subjectUser.name }
+        sessionResults.groupBy { it.subjectUserId }
+            .map { (userId, results) ->
+                val c = results.count { it.isCorrect }
+                SubjectScore(userId, nameMap[userId] ?: "?", c, results.size)
+            }
+            .sortedByDescending { it.ratio }
+    }
+
+    val allPerfect = subjectScores.isNotEmpty() && subjectScores.all { it.ratio == 1.0 }
+    val worstSubject = subjectScores.filter { it.ratio < 0.6 }.minByOrNull { it.ratio }
+
     Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        modifier = Modifier.fillMaxSize().padding(32.dp).verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Spacer(Modifier.height(32.dp))
         Text(t("Quiz Complete!", "¡Quiz completado!"), fontSize = 28.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(24.dp))
         Text("$correct / $total", fontSize = 56.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
         Text("$pct% ${t("correct", "correcto")}", fontSize = 18.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
-        Spacer(Modifier.height(40.dp))
+
+        if (subjectScores.isNotEmpty()) {
+            Spacer(Modifier.height(24.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(12.dp))
+            subjectScores.forEach { score ->
+                val scoreColor = when {
+                    score.ratio == 1.0 -> GTKYCorrect
+                    score.ratio < 0.5 -> MaterialTheme.colorScheme.error
+                    else -> MaterialTheme.colorScheme.onBackground
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(score.name, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                    Text("${score.correct}/${score.total}", fontSize = 15.sp, color = scoreColor, fontWeight = FontWeight.SemiBold)
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            HorizontalDivider()
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        if (allPerfect) {
+            Text(
+                t("You nailed everyone this round!", "¡Le diste a todos esta ronda!"),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = GTKYCorrect,
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(16.dp))
+        } else if (worstSubject != null) {
+            Text(
+                t(
+                    "Quiz yourself on ${worstSubject.name} next? You only got ${worstSubject.correct}/${worstSubject.total} right.",
+                    "¿Quieres hacer un quiz sobre ${worstSubject.name}? Solo acertaste ${worstSubject.correct}/${worstSubject.total}."
+                ),
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = { onQuizAboutSubject(worstSubject.userId) },
+                modifier = Modifier.fillMaxWidth().height(52.dp)
+            ) {
+                Text(t("Quiz about ${worstSubject.name}", "Quiz sobre ${worstSubject.name}"), fontSize = 15.sp)
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+
         Button(onClick = onBack, modifier = Modifier.fillMaxWidth().height(52.dp)) {
             Text(t("Back Home", "Inicio"), fontSize = 16.sp)
         }
+        Spacer(Modifier.height(32.dp))
     }
 }
 
