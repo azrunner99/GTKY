@@ -2,6 +2,8 @@
 
 ## UX Fix Pack
 
+- **Fix 24 — One-way connection rows are now tappable** — `OneWayConnectionRow` gains an `onClick: (() -> Unit)?` parameter (same pattern as `MutualConnectionRow`). In MINE scope tapping navigates directly to the other user's profile; in EVERYONE scope the same disambiguation dialog appears. The 8-answer gate snackbar applies to both scopes.
+
 - **Fix 23 — Connections profile gate uses live answer count** — `ConnectionsViewModel.loadConnections` replaced the one-shot `.first()` read of `myAnswerCount` with a `combine(getAllUsers(), getAnswerCountForUser())` flow so the gate updates in real time. A user who opens Connections with 6 answers, answers 3 more elsewhere, and returns no longer hits the gate stale.
 
 - **Fix 22 — Profile screen — read-only view of a user's survey answers** — New `ProfileScreen` + `ProfileViewModel` renders a user's answered questions formatted via `forQuiz(template, name)` (same phrasing as quiz). New route `Routes.PROFILE = "profile/{userId}"`. Two entry points: (1) each per-subject row in the quiz results breakdown is now clickable and navigates to that subject's profile; (2) `MutualConnectionRow` in the Connections screen is now clickable — in MINE scope it navigates to the other user's profile, in EVERYONE scope a disambiguation dialog asks which of the two users to view. Gate: users with fewer than 8 survey answers see a snackbar ("Answer 8 questions first…") instead of navigating — enforced in `ConnectionsScreen` via `ConnectionsUiState.myAnswerCount` (loaded from `repo.getAnswerCountForUser(activeUserId).first()`). Quiz results entry has no gate since reaching that screen already requires 8+ answers.

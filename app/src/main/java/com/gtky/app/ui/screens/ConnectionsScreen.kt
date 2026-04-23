@@ -239,7 +239,23 @@ fun ConnectionsScreen(
                             } else {
                                 t("${from.name} knows ${to.name}", "${from.name} conoce a ${to.name}")
                             }
-                            OneWayConnectionRow(rank = index + 1, label = label, score = score)
+                            OneWayConnectionRow(
+                                rank = index + 1,
+                                label = label,
+                                score = score,
+                                onClick = {
+                                    if (state.myAnswerCount < Constants.QUIZ_UNLOCK_THRESHOLD) {
+                                        coroutineScope.launch {
+                                            snackbarHostState.showSnackbar(profileGateMessage)
+                                        }
+                                    } else if (state.scope == ConnectionScope.MINE && state.activeUserId != null) {
+                                        val targetId = if (from.id == state.activeUserId) to.id else from.id
+                                        onGoToProfile(targetId)
+                                    } else {
+                                        pendingProfileEntry = ConnectionEntry(from, to, score, 0.0, score)
+                                    }
+                                }
+                            )
                             HorizontalDivider()
                         }
                     }
@@ -311,10 +327,11 @@ private fun MutualConnectionRow(
 }
 
 @Composable
-private fun OneWayConnectionRow(rank: Int, label: String, score: Double) {
+private fun OneWayConnectionRow(rank: Int, label: String, score: Double, onClick: (() -> Unit)? = null) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
