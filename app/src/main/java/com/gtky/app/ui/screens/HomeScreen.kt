@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import com.gtky.app.Constants
 import com.gtky.app.data.entity.Group
 import com.gtky.app.data.entity.User
+import com.gtky.app.data.repository.SimilarNameMatch
 import com.gtky.app.ui.LanguageToggle
 import com.gtky.app.ui.plural
 import com.gtky.app.ui.t
@@ -85,6 +86,21 @@ fun HomeScreen(
                 onImDifferent = { viewModel.cancelDuplicate(state.firstName, state.lastName) }
             )
         }
+        is HomeUiState.SimilarName -> {
+            WelcomeScreen(
+                hasExistingUsers = allUsers.isNotEmpty(),
+                error = null,
+                onNewUser = {},
+                onPickUser = onPickUser,
+                prefillFirstName = state.typedFirstName,
+                prefillLastName = state.typedLastName
+            )
+            SimilarNameDialog(
+                matches = state.matches,
+                onPickExisting = { user -> viewModel.selectExistingUser(user) },
+                onImDifferent = { viewModel.cancelSimilar(state.typedFirstName, state.typedLastName) }
+            )
+        }
         is HomeUiState.PickGroups -> {
             Box(modifier = Modifier.fillMaxSize())
             GroupPickerDialog(
@@ -120,6 +136,8 @@ fun HomeScreen(
     }
 }
 
+private enum class WelcomeMode { LANDING, NEW_USER_FORM, PICKER_INLINE }
+
 @Composable
 private fun WelcomeScreen(
     hasExistingUsers: Boolean,
@@ -129,16 +147,9 @@ private fun WelcomeScreen(
     prefillFirstName: String = "",
     prefillLastName: String = ""
 ) {
-    var firstName by remember(prefillFirstName) { mutableStateOf(prefillFirstName) }
-    var lastInitial by remember(prefillLastName) { mutableStateOf(prefillLastName) }
-    val canSubmit = firstName.isNotBlank() && lastInitial.isNotBlank()
-    val fullName = "${firstName.trim()} ${lastInitial.trim()}"
-
-    val lastNameFocusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(prefillLastName) {
-        if (prefillLastName.isNotEmpty()) lastNameFocusRequester.requestFocus()
-    }
+    val initialMode = if (prefillFirstName.isNotEmpty() || prefillLastName.isNotEmpty())
+        WelcomeMode.NEW_USER_FORM else WelcomeMode.LANDING
+    var mode by remember { mutableStateOf(initialMode) }
 
     Column(modifier = Modifier.fillMaxSize().padding(32.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -162,72 +173,200 @@ private fun WelcomeScreen(
                 modifier = Modifier.padding(bottom = 48.dp)
             )
 
-            OutlinedTextField(
-                value = firstName,
-                onValueChange = { firstName = it },
-                label = { Text(t("First name", "Nombre")) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
-            )
-
-            Spacer(Modifier.height(10.dp))
-
-            OutlinedTextField(
-                value = lastInitial,
-                onValueChange = { lastInitial = it },
-                label = { Text(t("Last name or initial", "Apellido o inicial")) },
-                placeholder = { Text(t("e.g. Smith or S", "ej. García o G")) },
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(lastNameFocusRequester),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { if (canSubmit) onNewUser(fullName) })
-            )
-
-            if (firstName.isNotBlank() && lastInitial.isNotBlank()) {
-                val preview = normalizeName(fullName)
-                if (preview != fullName) {
-                    Text(
-                        text = t("Will be saved as: $preview", "Se guardará como: $preview"),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-            }
-
-            if (error != null) {
-                Text(
-                    text = error,
-                    color = MaterialTheme.colorScheme.error,
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(top = 4.dp)
+            when (mode) {
+                WelcomeMode.LANDING -> LandingChoice(
+                    hasExistingUsers = hasExistingUsers,
+                    onNewHere = { mode = WelcomeMode.NEW_USER_FORM },
+                    onAlreadyHere = onPickUser
                 )
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            Button(
-                onClick = { if (canSubmit) onNewUser(fullName) },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                enabled = canSubmit
-            ) {
-                Text(t("Let's Go!", "¡Vamos!"), fontSize = 18.sp)
-            }
-
-            if (hasExistingUsers) {
-                Spacer(Modifier.height(12.dp))
-                OutlinedButton(
-                    onClick = onPickUser,
-                    modifier = Modifier.fillMaxWidth().height(52.dp)
-                ) {
-                    Text(t("I'm already here — pick my name", "Ya estoy aquí — elige mi nombre"), fontSize = 16.sp)
-                }
+                WelcomeMode.NEW_USER_FORM -> NewUserForm(
+                    error = error,
+                    prefillFirstName = prefillFirstName,
+                    prefillLastName = prefillLastName,
+                    hasExistingUsers = hasExistingUsers,
+                    onSubmit = onNewUser,
+                    onBackToLanding = { mode = WelcomeMode.LANDING },
+                    onAlreadyHere = onPickUser
+                )
+                else -> { /* unused */ }
             }
         }
     }
+}
+
+@Composable
+private fun LandingChoice(
+    hasExistingUsers: Boolean,
+    onNewHere: () -> Unit,
+    onAlreadyHere: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = t(
+                "Welcome! Are you new here or already signed up?",
+                "¡Bienvenido! ¿Eres nuevo o ya te registraste?"
+            ),
+            fontSize = 16.sp,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.75f),
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        Button(
+            onClick = onNewHere,
+            modifier = Modifier.fillMaxWidth().height(64.dp)
+        ) {
+            Text(t("I'm new here", "Soy nuevo aquí"), fontSize = 18.sp)
+        }
+        if (hasExistingUsers) {
+            OutlinedButton(
+                onClick = onAlreadyHere,
+                modifier = Modifier.fillMaxWidth().height(64.dp)
+            ) {
+                Text(t("I'm already here", "Ya estoy aquí"), fontSize = 18.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun NewUserForm(
+    error: String?,
+    prefillFirstName: String,
+    prefillLastName: String,
+    hasExistingUsers: Boolean,
+    onSubmit: (String) -> Unit,
+    onBackToLanding: () -> Unit,
+    onAlreadyHere: () -> Unit
+) {
+    var firstName by remember(prefillFirstName) { mutableStateOf(prefillFirstName) }
+    var lastInitial by remember(prefillLastName) { mutableStateOf(prefillLastName) }
+    val canSubmit = firstName.isNotBlank() && lastInitial.isNotBlank()
+    val fullName = "${firstName.trim()} ${lastInitial.trim()}"
+    val lastNameFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(prefillLastName) {
+        if (prefillLastName.isNotEmpty()) lastNameFocusRequester.requestFocus()
+    }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        TextButton(
+            onClick = onBackToLanding,
+            modifier = Modifier.align(Alignment.Start)
+        ) {
+            Text(t("← Back", "← Atrás"), fontSize = 13.sp)
+        }
+
+        OutlinedTextField(
+            value = firstName,
+            onValueChange = { firstName = it },
+            label = { Text(t("First name", "Nombre")) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
+        )
+
+        Spacer(Modifier.height(10.dp))
+
+        OutlinedTextField(
+            value = lastInitial,
+            onValueChange = { lastInitial = it },
+            label = { Text(t("Last name or initial", "Apellido o inicial")) },
+            placeholder = { Text(t("e.g. Smith or S", "ej. García o G")) },
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(lastNameFocusRequester),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { if (canSubmit) onSubmit(fullName) })
+        )
+
+        if (firstName.isNotBlank() && lastInitial.isNotBlank()) {
+            val preview = normalizeName(fullName)
+            if (preview != fullName) {
+                Text(
+                    text = t("Will be saved as: $preview", "Se guardará como: $preview"),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+        }
+
+        if (error != null) {
+            Text(
+                text = error,
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 13.sp,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        Button(
+            onClick = { if (canSubmit) onSubmit(fullName) },
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            enabled = canSubmit
+        ) {
+            Text(t("Let's Go!", "¡Vamos!"), fontSize = 18.sp)
+        }
+
+        if (hasExistingUsers) {
+            TextButton(
+                onClick = onAlreadyHere,
+                modifier = Modifier.padding(top = 8.dp)
+            ) {
+                Text(
+                    text = t(
+                        "Actually, I'm already here — pick my name",
+                        "En realidad, ya estoy aquí — elige mi nombre"
+                    ),
+                    fontSize = 13.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SimilarNameDialog(
+    matches: List<SimilarNameMatch>,
+    onPickExisting: (com.gtky.app.data.entity.User) -> Unit,
+    onImDifferent: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onImDifferent,
+        title = { Text(t("Is this you?", "¿Eres tú?")) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = t(
+                        "We found someone with a similar name. Tap your name if you're already here:",
+                        "Encontramos a alguien con un nombre parecido. Toca tu nombre si ya estás aquí:"
+                    ),
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                )
+                matches.forEach { match ->
+                    OutlinedButton(
+                        onClick = { onPickExisting(match.user) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(match.user.name)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onImDifferent) {
+                Text(t("None of these — I'm different", "Ninguno — soy diferente"))
+            }
+        }
+    )
 }
 
 @Composable

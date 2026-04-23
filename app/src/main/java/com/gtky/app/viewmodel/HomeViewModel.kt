@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.gtky.app.data.entity.Group
 import com.gtky.app.data.entity.User
 import com.gtky.app.data.repository.GTKYRepository
+import com.gtky.app.data.repository.MatchKind
+import com.gtky.app.data.repository.SimilarNameMatch
 import com.gtky.app.data.repository.SubjectPool
 import com.gtky.app.util.normalizeName
 import kotlinx.coroutines.Job
@@ -24,12 +26,18 @@ sealed class HomeUiState {
     data class NoUser(
         val error: String? = null,
         val prefillFirstName: String = "",
-        val prefillLastName: String = ""
+        val prefillLastName: String = "",
+        val skipSimilarForName: String? = null
     ) : HomeUiState()
     data class DuplicateName(
         val firstName: String,
         val lastName: String,
         val collidingUser: User
+    ) : HomeUiState()
+    data class SimilarName(
+        val typedFirstName: String,
+        val typedLastName: String,
+        val matches: List<SimilarNameMatch>
     ) : HomeUiState()
     data class PickGroups(val user: User, val groups: List<Group>) : HomeUiState()
     data class UserSelected(
@@ -142,17 +150,38 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
             return
         }
         viewModelScope.launch {
-            val normalizedName = normalizeName(name)
-            val existing = repo.getUserByName(normalizedName)
-            if (existing != null) {
-                val parts = normalizedName.split(" ", limit = 2)
-                _uiState.value = HomeUiState.DuplicateName(
-                    firstName = parts.getOrElse(0) { "" },
-                    lastName = parts.getOrElse(1) { "" },
-                    collidingUser = existing
+            val skipName = (_uiState.value as? HomeUiState.NoUser)?.skipSimilarForName
+            val normalized = normalizeName(name)
+            val shouldSkipSimilar = skipName != null && skipName == normalized
+
+            val matches = if (shouldSkipSimilar) {
+                // Bypass fuzzy matches but still enforce hard exact-match block.
+                val exact = repo.getUserByName(normalized)
+                if (exact != null) listOf(SimilarNameMatch(exact, MatchKind.EXACT)) else emptyList()
+            } else {
+                repo.findSimilarNames(normalized)
+            }
+
+            if (matches.isNotEmpty()) {
+                val parts = normalized.split(" ", limit = 2)
+                // Single exact match → existing DuplicateName UX (users already know it).
+                if (matches.size == 1 && matches[0].matchKind == MatchKind.EXACT) {
+                    _uiState.value = HomeUiState.DuplicateName(
+                        firstName = parts.getOrElse(0) { "" },
+                        lastName = parts.getOrElse(1) { "" },
+                        collidingUser = matches[0].user
+                    )
+                    return@launch
+                }
+                // Any other match combination → new candidate-picker popup.
+                _uiState.value = HomeUiState.SimilarName(
+                    typedFirstName = parts.getOrElse(0) { "" },
+                    typedLastName = parts.getOrElse(1) { "" },
+                    matches = matches
                 )
                 return@launch
             }
+
             val id = repo.createUser(name)
             repo.setActiveUserId(id)
             val user = repo.getUserById(id)!!
@@ -167,6 +196,14 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
 
     fun cancelDuplicate(firstName: String, lastName: String) {
         _uiState.value = HomeUiState.NoUser(prefillFirstName = firstName, prefillLastName = lastName)
+    }
+
+    fun cancelSimilar(firstName: String, lastName: String) {
+        _uiState.value = HomeUiState.NoUser(
+            prefillFirstName = firstName,
+            prefillLastName = lastName,
+            skipSimilarForName = normalizeName("$firstName $lastName")
+        )
     }
 
     fun finishGroupSelection(user: User, selectedGroupIds: Set<Long>) {

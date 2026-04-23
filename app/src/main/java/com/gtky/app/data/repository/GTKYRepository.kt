@@ -84,6 +84,35 @@ data class ConnectionEntry(
     val mutualScore: Double
 )
 
+enum class MatchKind {
+    EXACT,          // normalized names are identical
+    PREFIX_LONGER,  // existing user's last name starts with what was typed ("Alex S" typed, "Alex Smith" exists)
+    PREFIX_SHORTER, // typed last name starts with existing user's ("Alex Smith" typed, "Alex S" exists)
+    SAME_INITIAL    // same first name, different last names, same leading letter
+}
+
+data class SimilarNameMatch(val user: User, val matchKind: MatchKind)
+
+internal fun classifyNameMatch(
+    typedFirst: String,
+    typedLast: String,
+    existingFirst: String,
+    existingLast: String
+): MatchKind? {
+    val tf = typedFirst.lowercase()
+    val tl = typedLast.lowercase()
+    val ef = existingFirst.lowercase()
+    val el = existingLast.lowercase()
+    if (tf != ef) return null
+    return when {
+        el == tl -> MatchKind.EXACT
+        tl.isNotEmpty() && el.isNotEmpty() && el.startsWith(tl) -> MatchKind.PREFIX_LONGER
+        tl.isNotEmpty() && el.isNotEmpty() && tl.startsWith(el) -> MatchKind.PREFIX_SHORTER
+        tl.isNotEmpty() && el.isNotEmpty() && tl[0] == el[0] -> MatchKind.SAME_INITIAL
+        else -> null
+    }
+}
+
 class GTKYRepository(val db: GTKYDatabase) {
 
     // Users
@@ -92,6 +121,33 @@ class GTKYRepository(val db: GTKYDatabase) {
     suspend fun getUserById(id: Long) = db.userDao().getUserById(id)
 
     suspend fun getUserByName(name: String) = db.userDao().getUserByName(name)
+
+    suspend fun findSimilarNames(typedName: String): List<SimilarNameMatch> {
+        val typed = normalizeName(typedName)
+        if (typed.isBlank()) return emptyList()
+        val typedParts = typed.split(" ", limit = 2)
+        val typedFirst = typedParts.getOrNull(0)?.lowercase() ?: return emptyList()
+        val typedLast = typedParts.getOrNull(1)?.lowercase() ?: ""
+
+        val allUsers = db.userDao().getAllUsers().first()
+        val matches = mutableListOf<SimilarNameMatch>()
+
+        for (user in allUsers) {
+            val existingParts = user.name.split(" ", limit = 2)
+            val existingFirst = existingParts.getOrNull(0)?.lowercase() ?: continue
+            val existingLast = existingParts.getOrNull(1)?.lowercase() ?: ""
+            val kind = classifyNameMatch(typedFirst, typedLast, existingFirst, existingLast)
+            if (kind != null) matches.add(SimilarNameMatch(user, kind))
+        }
+
+        return matches.sortedBy { match ->
+            when (match.matchKind) {
+                MatchKind.EXACT -> 0
+                MatchKind.PREFIX_LONGER, MatchKind.PREFIX_SHORTER -> 1
+                MatchKind.SAME_INITIAL -> 2
+            }
+        }
+    }
 
     suspend fun createUser(name: String): Long = db.userDao().insertUser(User(name = normalizeName(name)))
 
