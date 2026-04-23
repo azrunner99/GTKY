@@ -2,6 +2,7 @@
 
 ## UX Fix Pack
 
+- **Fix 13 — Quizzable-users flow now re-emits in real time** — Added `getTotalAnswerCountFlow()` to `SurveyAnswerDao` (flows off the whole `survey_answers` table). `getQuizzableUsers` and the home screen's ready-count now both react when *any* user answers questions, not just the current user. The quiz filter dialog's person list and the "Quiz unlocks when…" subtitle update live without the current user doing anything.
 - **Fix 12 — Group eligibility threshold corrected** — Removed `getQuizEligibleUsersInGroup` from `UserDao`, which still hardcoded the old 15-answer threshold. Group-filtered quizzes now use the same `QUIZ_UNLOCK_THRESHOLD` (8) as all other paths.
 - **Fix 11 — Quiz subject distribution and multi-select** — Quiz sessions now interleave subjects using weighted random, biased toward people you've been quizzed on less. Fixes clustering where one or two people dominated a whole session. New unified quiz filter dialog: filter by group, by specific people (with search), or both. Selecting specific people overrides the group filter. Active Users tap now opens the filter dialog with the person pre-selected, so you can add more people before starting. Pre-start pool-size warning tells you how many questions are available for your filter.
 

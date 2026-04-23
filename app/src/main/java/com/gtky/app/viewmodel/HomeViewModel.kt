@@ -11,6 +11,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -74,6 +75,11 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
         viewModelScope.launch {
             repo.getAllGroups().collect { g ->
                 _groups.value = g
+                refreshReadyUsersByGroup()
+            }
+        }
+        viewModelScope.launch {
+            repo.observeTotalAnswers().collect {
                 refreshReadyUsersByGroup()
             }
         }
@@ -152,10 +158,14 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
     private fun transitionToUserSelected(user: User) {
         answerCountJob?.cancel()
         answerCountJob = viewModelScope.launch {
-            repo.getAnswerCountForUser(user.id).collect { c ->
-                val readyCount = repo.getReadyUserCount(user.id)
-                _uiState.value = HomeUiState.UserSelected(user, c, readyCount)
-            }
+            combine(
+                repo.getAnswerCountForUser(user.id),
+                repo.observeTotalAnswers()
+            ) { myCount, _ -> myCount }
+                .collect { myCount ->
+                    val readyCount = repo.getReadyUserCount(user.id)
+                    _uiState.value = HomeUiState.UserSelected(user, myCount, readyCount)
+                }
         }
         viewModelScope.launch {
             _readyUsersByGroup.value = repo.getReadyUsersByGroup(user.id, _groups.value)

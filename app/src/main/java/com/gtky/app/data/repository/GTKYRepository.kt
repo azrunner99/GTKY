@@ -198,8 +198,10 @@ class GTKYRepository(val db: GTKYDatabase) {
         return total
     }
 
+    fun observeTotalAnswers(): Flow<Int> = db.surveyAnswerDao().getTotalAnswerCountFlow()
+
     fun getQuizzableUsers(excludeUserId: Long): Flow<List<User>> =
-        combine(getAllUsers(), db.surveyAnswerDao().getAnswerCountForUser(0L)) { users, _ -> users }
+        combine(getAllUsers(), db.surveyAnswerDao().getTotalAnswerCountFlow()) { users, _ -> users }
             .map { users ->
                 users.filter { user ->
                     user.id != excludeUserId &&

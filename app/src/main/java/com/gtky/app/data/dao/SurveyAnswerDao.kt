@@ -24,6 +24,9 @@ interface SurveyAnswerDao {
     @Query("SELECT * FROM survey_answers WHERE userId = :userId")
     suspend fun getAllAnswersForUser(userId: Long): List<SurveyAnswer>
 
+    @Query("SELECT COUNT(*) FROM survey_answers")
+    fun getTotalAnswerCountFlow(): Flow<Int>
+
     @Query("DELETE FROM survey_answers WHERE userId = :userId")
     suspend fun deleteAllAnswersForUser(userId: Long)
 }
