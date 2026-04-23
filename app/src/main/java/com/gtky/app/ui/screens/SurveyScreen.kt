@@ -15,8 +15,8 @@ import androidx.compose.ui.unit.sp
 import com.gtky.app.Constants
 import com.gtky.app.ui.LanguageToggle
 import com.gtky.app.ui.LocalAppLanguage
-import com.gtky.app.ui.QuestionUtils
 import com.gtky.app.ui.t
+import com.gtky.app.util.forSurvey
 import com.gtky.app.ui.theme.GTKYCorrect
 import com.gtky.app.viewmodel.SurveyViewModel
 import kotlinx.coroutines.delay
@@ -105,9 +105,9 @@ fun SurveyScreen(
                                 state.optionsEs else state.options
 
                             val displayTemplate = if (language == "es" && q.questionTemplateEs.isNotEmpty())
-                                QuestionUtils.toSelfEs(q.questionTemplateEs)
+                                forSurvey(q.questionTemplateEs, "es")
                             else
-                                QuestionUtils.toSelfEn(q.questionTemplate)
+                                forSurvey(q.questionTemplate, "en")
 
                             QuestionContent(
                                 questionTemplate = displayTemplate,

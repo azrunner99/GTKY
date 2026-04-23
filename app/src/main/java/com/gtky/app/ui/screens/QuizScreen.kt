@@ -23,6 +23,7 @@ import com.gtky.app.ui.t
 import com.gtky.app.ui.theme.GTKYCorrect
 import com.gtky.app.ui.theme.GTKYWrong
 import com.gtky.app.viewmodel.QuizViewModel
+import com.gtky.app.util.forQuiz
 import kotlinx.coroutines.delay
 
 @Composable
@@ -132,7 +133,7 @@ fun QuizScreen(
                             } else q.correctAnswer
 
                             QuizQuestionContent(
-                                questionText = questionTemplate.replace("[NAME]", q.subjectUser.name),
+                                questionText = forQuiz(questionTemplate, q.subjectUser.name),
                                 subjectName = q.subjectUser.name,
                                 displayOptions = displayOptions,
                                 englishOptions = q.options,
