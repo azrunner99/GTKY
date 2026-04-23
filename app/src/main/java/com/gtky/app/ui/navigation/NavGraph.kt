@@ -72,10 +72,18 @@ fun GTKYNavGraph(navController: NavHostController) {
             arguments = listOf(navArgument("userId") { type = NavType.LongType })
         ) { backStack ->
             val userId = backStack.arguments!!.getLong("userId")
+            val homeVm: HomeViewModel = viewModel(
+                viewModelStoreOwner = navController.getBackStackEntry(Routes.HOME),
+                factory = HomeViewModel.Factory(repo)
+            )
             val vm: SurveyViewModel = viewModel(factory = SurveyViewModel.Factory(repo, userId))
             SurveyScreen(
                 viewModel = vm,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onGoToQuiz = {
+                    homeVm.requestOpenQuizDialog()
+                    navController.popBackStack(Routes.HOME, inclusive = false)
+                }
             )
         }
 
@@ -106,8 +114,19 @@ fun GTKYNavGraph(navController: NavHostController) {
         }
 
         composable(Routes.CONNECTIONS) {
+            val homeVm: HomeViewModel = viewModel(
+                viewModelStoreOwner = navController.getBackStackEntry(Routes.HOME),
+                factory = HomeViewModel.Factory(repo)
+            )
             val vm: ConnectionsViewModel = viewModel(factory = ConnectionsViewModel.Factory(repo))
-            ConnectionsScreen(viewModel = vm, onBack = { navController.popBackStack() })
+            ConnectionsScreen(
+                viewModel = vm,
+                onBack = { navController.popBackStack() },
+                onGoToQuiz = {
+                    homeVm.requestOpenQuizDialog()
+                    navController.popBackStack(Routes.HOME, inclusive = false)
+                }
+            )
         }
 
         composable(Routes.ACTIVE_USERS) {

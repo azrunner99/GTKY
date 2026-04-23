@@ -24,7 +24,8 @@ import kotlinx.coroutines.delay
 @Composable
 fun SurveyScreen(
     viewModel: SurveyViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onGoToQuiz: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     val language = LocalAppLanguage.current
@@ -99,7 +100,7 @@ fun SurveyScreen(
                 ) {
                     when {
                         state.isLoading -> CircularProgressIndicator()
-                        state.isDone -> AllAnsweredContent(onBack = onBack)
+                        state.isDone -> AllAnsweredContent(onBack = onBack, onGoToQuiz = onGoToQuiz)
                         q != null -> {
                             val displayOptions = if (language == "es" && state.optionsEs.isNotEmpty())
                                 state.optionsEs else state.options
@@ -218,7 +219,7 @@ private fun QuestionContent(
 }
 
 @Composable
-private fun AllAnsweredContent(onBack: () -> Unit) {
+private fun AllAnsweredContent(onBack: () -> Unit, onGoToQuiz: () -> Unit) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -232,7 +233,7 @@ private fun AllAnsweredContent(onBack: () -> Unit) {
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
         )
-        Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
+        Button(onClick = onGoToQuiz, modifier = Modifier.fillMaxWidth()) {
             Text(t("Take a Quiz", "Tomar un Quiz"))
         }
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {

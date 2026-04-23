@@ -26,7 +26,8 @@ import kotlin.math.roundToInt
 @Composable
 fun ConnectionsScreen(
     viewModel: ConnectionsViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onGoToQuiz: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
 
@@ -150,7 +151,7 @@ fun ConnectionsScreen(
                                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                             )
                             Spacer(Modifier.height(4.dp))
-                            Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
+                            Button(onClick = onGoToQuiz, modifier = Modifier.fillMaxWidth()) {
                                 Text(t("Take a Quiz", "Tomar un Quiz"))
                             }
                             TextButton(onClick = onBack) {

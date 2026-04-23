@@ -51,6 +51,7 @@ fun HomeScreen(
     val quizzableUsers by viewModel.quizzableUsers.collectAsState()
     val filterPreview by viewModel.filterPreview.collectAsState()
     val pendingSubjectId by viewModel.pendingQuizSubjectId.collectAsState()
+    val pendingOpenQuizDialog by viewModel.pendingOpenQuizDialog.collectAsState()
 
     when (val state = uiState) {
         is HomeUiState.Loading -> {
@@ -110,7 +111,9 @@ fun HomeScreen(
                 onRenameUser = { newName -> viewModel.renameUser(state.user.id, newName) },
                 onClearRenameError = { viewModel.clearRenameError() },
                 onUpdateFilterPreview = { gIds, pIds -> viewModel.updateFilterPreview(gIds, pIds) },
-                onClearPendingSubject = { viewModel.clearPendingQuizSubject() }
+                onClearPendingSubject = { viewModel.clearPendingQuizSubject() },
+                pendingOpenQuizDialog = pendingOpenQuizDialog,
+                onClearPendingOpenQuizDialog = { viewModel.clearPendingOpenQuizDialog() }
             )
         }
     }
@@ -234,7 +237,9 @@ private fun UserHomeScreen(
     onRenameUser: (String) -> Unit,
     onClearRenameError: () -> Unit,
     onUpdateFilterPreview: (List<Long>, Set<Long>) -> Unit,
-    onClearPendingSubject: () -> Unit
+    onClearPendingSubject: () -> Unit,
+    pendingOpenQuizDialog: Boolean = false,
+    onClearPendingOpenQuizDialog: () -> Unit = {}
 ) {
     var showQuizFilterDialog by remember { mutableStateOf(false) }
     var showSignOutDialog by remember { mutableStateOf(false) }
@@ -243,6 +248,13 @@ private fun UserHomeScreen(
     LaunchedEffect(pendingQuizSubjectId) {
         if (pendingQuizSubjectId != null) {
             showQuizFilterDialog = true
+        }
+    }
+
+    LaunchedEffect(pendingOpenQuizDialog) {
+        if (pendingOpenQuizDialog) {
+            showQuizFilterDialog = true
+            onClearPendingOpenQuizDialog()
         }
     }
 

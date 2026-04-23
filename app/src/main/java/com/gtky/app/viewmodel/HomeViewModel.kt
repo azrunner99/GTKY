@@ -61,6 +61,9 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
     private val _pendingQuizSubjectId = MutableStateFlow<Long?>(null)
     val pendingQuizSubjectId: StateFlow<Long?> = _pendingQuizSubjectId.asStateFlow()
 
+    private val _pendingOpenQuizDialog = MutableStateFlow(false)
+    val pendingOpenQuizDialog: StateFlow<Boolean> = _pendingOpenQuizDialog.asStateFlow()
+
     private var answerCountJob: Job? = null
     private var quizzableUsersJob: Job? = null
     private var filterPreviewJob: Job? = null
@@ -184,6 +187,14 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
 
     fun clearPendingQuizSubject() {
         _pendingQuizSubjectId.value = null
+    }
+
+    fun requestOpenQuizDialog() {
+        _pendingOpenQuizDialog.value = true
+    }
+
+    fun clearPendingOpenQuizDialog() {
+        _pendingOpenQuizDialog.value = false
     }
 
     fun updateFilterPreview(groupIds: List<Long>, personIds: Set<Long>) {
