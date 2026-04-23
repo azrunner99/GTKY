@@ -2,6 +2,8 @@
 
 ## UX Fix Pack
 
+- **Fix 29b — Photo storage utility** — `util/PhotoStorage.kt` saves/deletes/loads 512×512 JPEG quality 80 avatars in `filesDir/avatars/<userId>.jpg`. Center-crops to square before scaling. No Android test environment required at build time.
+
 - **Fix 29a — Photo schema** — Added `photoPath`, `photoPromptCount`, `photoPromptOptOut` columns to `users` table via Room migration 2→3 (non-destructive ALTER TABLE). DAO + repository wrappers added. `deleteUser` now also deletes the avatar file from internal storage.
 
 - **Fix 28 — Welcome screen rework + similar-name detection** — `WelcomeScreen` now opens with an equal-weight "I'm new here" / "I'm already here" landing choice instead of form-first. Tapping either reveals the form or the picker. New `findSimilarNames()` in `GTKYRepository` catches same-first-name + prefix/initial matches (e.g., typing "Alex S" when "Alex Smith" exists). New `HomeUiState.SimilarName` state and `SimilarNameDialog` show all candidate users as tappable rows plus "None of these — I'm different." Once a user rejects a similar-name suggestion for a specific typed name, re-submitting the same name bypasses fuzzy matching but still enforces hard exact-name uniqueness. 10 unit tests in `SimilarNameTest.kt` cover the classification logic.
