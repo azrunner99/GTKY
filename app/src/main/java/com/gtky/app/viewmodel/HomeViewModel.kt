@@ -44,7 +44,8 @@ sealed class HomeUiState {
         val user: User,
         val answerCount: Int,
         val readyCount: Int = 0,
-        val renameError: String? = null
+        val renameError: String? = null,
+        val showPhotoPrompt: Boolean = false
     ) : HomeUiState()
 }
 
@@ -219,6 +220,18 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
         subjectPoolsJob?.cancel()
         quizzableUsersJob?.cancel()
 
+        val shouldPrompt = user.photoPath == null &&
+                !user.photoPromptOptOut &&
+                user.photoPromptCount < 3
+        if (shouldPrompt) {
+            viewModelScope.launch {
+                repo.incrementPhotoPromptCount(user.id)
+                kotlinx.coroutines.delay(1000)
+                val state = _uiState.value as? HomeUiState.UserSelected ?: return@launch
+                _uiState.value = state.copy(showPhotoPrompt = true)
+            }
+        }
+
         answerCountJob = viewModelScope.launch {
             combine(
                 repo.getAnswerCountForUser(user.id),
@@ -294,6 +307,30 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
     fun clearRenameError() {
         val state = _uiState.value as? HomeUiState.UserSelected ?: return
         _uiState.value = state.copy(renameError = null)
+    }
+
+    fun dismissPhotoPrompt() {
+        val state = _uiState.value as? HomeUiState.UserSelected ?: return
+        _uiState.value = state.copy(showPhotoPrompt = false)
+    }
+
+    fun savePhoto(context: android.content.Context, bitmap: android.graphics.Bitmap) {
+        val state = _uiState.value as? HomeUiState.UserSelected ?: return
+        viewModelScope.launch {
+            val path = com.gtky.app.util.PhotoStorage.saveAvatar(context, state.user.id, bitmap)
+            repo.setUserPhotoPath(state.user.id, path)
+            val updatedUser = repo.getUserById(state.user.id) ?: return@launch
+            _uiState.value = state.copy(user = updatedUser, showPhotoPrompt = false)
+        }
+    }
+
+    fun optOutOfPhotoPrompts() {
+        val state = _uiState.value as? HomeUiState.UserSelected ?: return
+        viewModelScope.launch {
+            repo.markPhotoPromptOptOut(state.user.id)
+            val updatedUser = repo.getUserById(state.user.id) ?: return@launch
+            _uiState.value = state.copy(user = updatedUser, showPhotoPrompt = false)
+        }
     }
 
     fun signOut() {

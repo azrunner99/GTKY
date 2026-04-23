@@ -2,6 +2,8 @@
 
 ## UX Fix Pack
 
+- **Fix 29e — Photo prompt logic** — `HomeViewModel` evaluates `shouldPrompt` on every sign-in (no photo, not opted-out, `photoPromptCount < 3`). When true, increments the count immediately (so force-quit mid-prompt still records the session), waits 1 s for the home screen to render, then sets `showPhotoPrompt = true` on `UserSelected`. `HomeScreen` renders `PhotoPromptDialog` when that flag is set, showing the opt-out button only on the third prompt (`photoPromptCount >= 3`). Three handler functions added: `savePhoto` (saves avatar + refreshes user state), `dismissPhotoPrompt` (skip this time), `optOutOfPhotoPrompts` (marks DB flag, no more prompts).
+
 - **Fix 29d — Avatar component + wiring** — New `ui/components/Avatar.kt` renders a 2-letter initials circle (deterministic color palette) when no photo is set, or the saved JPEG when one exists. Wired everywhere a user's name appears: 40dp avatars in `PickUserScreen` and `ActiveUsersScreen` user rows; 24dp avatar in the HomeScreen "Signed in as" pill; 32dp avatars in the QuizScreen "About X" subject card; paired overlapping 28dp avatars in `MutualConnectionRow` and `OneWayConnectionRow`; 128dp centered avatar at the top of `ProfileScreen`. `ProfileUiState` now carries the full `User` object to support the profile avatar.
 
 - **Fix 29c — Photo capture dialog** — CameraX front-camera preview + capture in a new `PhotoPromptDialog` composable. Handles runtime permission flow including permanent-block detection and "Open Settings" path. Added CameraX 1.3.1 dependencies and `CAMERA` permission to manifest.

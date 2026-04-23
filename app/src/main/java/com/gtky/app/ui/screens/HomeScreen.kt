@@ -24,6 +24,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import com.gtky.app.Constants
 import com.gtky.app.data.entity.Group
 import com.gtky.app.data.entity.User
@@ -133,6 +134,20 @@ fun HomeScreen(
                 pendingOpenQuizDialog = pendingOpenQuizDialog,
                 onClearPendingOpenQuizDialog = { viewModel.clearPendingOpenQuizDialog() }
             )
+            if (state.showPhotoPrompt) {
+                val context = LocalContext.current
+                PhotoPromptDialog(
+                    showOptOut = state.user.photoPromptCount >= 3,
+                    onResult = { result, bitmap ->
+                        when (result) {
+                            PhotoPromptResult.CAPTURED -> bitmap?.let { viewModel.savePhoto(context, it) }
+                                ?: viewModel.dismissPhotoPrompt()
+                            PhotoPromptResult.SKIPPED -> viewModel.dismissPhotoPrompt()
+                            PhotoPromptResult.OPTED_OUT -> viewModel.optOutOfPhotoPrompts()
+                        }
+                    }
+                )
+            }
         }
     }
 }
