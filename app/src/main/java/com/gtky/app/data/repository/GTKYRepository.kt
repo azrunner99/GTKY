@@ -44,6 +44,9 @@ class GTKYRepository(val db: GTKYDatabase) {
         db.userDao().deleteUser(user)
     }
 
+    suspend fun renameUser(userId: Long, newName: String) =
+        db.userDao().updateName(userId, newName.trim())
+
     // Groups
     fun getAllGroups(): Flow<List<Group>> = db.groupDao().getAllGroups()
 

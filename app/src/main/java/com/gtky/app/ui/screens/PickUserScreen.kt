@@ -31,11 +31,38 @@ fun PickUserScreen(
     onBack: () -> Unit
 ) {
     var query by remember { mutableStateOf("") }
+    var pendingUser by remember { mutableStateOf<User?>(null) }
     val focusRequester = remember { FocusRequester() }
+
+    val nameIndexMap = remember(users) {
+        val grouped = users.groupBy { it.name.lowercase() }
+        users.associate { user ->
+            val group = grouped[user.name.lowercase()]!!
+            user.id to if (group.size > 1) "${user.name} (${group.indexOf(user) + 1})" else user.name
+        }
+    }
 
     val filtered = remember(query, users) {
         if (query.isBlank()) users
         else users.filter { it.name.contains(query, ignoreCase = true) }
+    }
+
+    pendingUser?.let { user ->
+        val displayName = nameIndexMap[user.id] ?: user.name
+        AlertDialog(
+            onDismissRequest = { pendingUser = null },
+            title = { Text(t("Sign in as $displayName?", "¿Iniciar sesión como $displayName?")) },
+            confirmButton = {
+                Button(onClick = { pendingUser = null; onUserSelected(user) }) {
+                    Text(t("Yes", "Sí"))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingUser = null }) {
+                    Text(t("Cancel", "Cancelar"))
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -88,10 +115,11 @@ fun PickUserScreen(
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(filtered, key = { it.id }) { user ->
+                        val displayName = nameIndexMap[user.id] ?: user.name
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onUserSelected(user) }
+                                .clickable { pendingUser = user }
                                 .padding(horizontal = 16.dp, vertical = 16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -103,7 +131,7 @@ fun PickUserScreen(
                             )
                             Spacer(Modifier.width(16.dp))
                             Text(
-                                text = user.name,
+                                text = displayName,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Medium
                             )

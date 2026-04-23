@@ -21,6 +21,9 @@ interface UserDao {
     @Delete
     suspend fun deleteUser(user: User)
 
+    @Query("UPDATE users SET name = :name WHERE id = :id")
+    suspend fun updateName(id: Long, name: String)
+
     @Query("SELECT COUNT(*) FROM users")
     suspend fun getUserCount(): Int
 
