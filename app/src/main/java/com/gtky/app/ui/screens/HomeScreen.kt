@@ -1,6 +1,7 @@
 package com.gtky.app.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,7 +11,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
@@ -535,8 +535,13 @@ private fun UserHomeScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Avatar(user = user, size = 24.dp)
-                    Spacer(Modifier.width(6.dp))
+                    Box(
+                        modifier = Modifier.clickable(onClick = onReplacePhoto),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Avatar(user = user, size = 32.dp)
+                    }
+                    Spacer(Modifier.width(8.dp))
                     Text(
                         text = t("Signed in as ${user.name}", "Conectado como ${user.name}"),
                         fontSize = 13.sp,
@@ -550,16 +555,6 @@ private fun UserHomeScreen(
                         Icon(
                             Icons.Default.Edit,
                             contentDescription = t("Edit name", "Editar nombre"),
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                    IconButton(
-                        onClick = onReplacePhoto,
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.PhotoCamera,
-                            contentDescription = t("Change photo", "Cambiar foto"),
                             modifier = Modifier.size(16.dp)
                         )
                     }
