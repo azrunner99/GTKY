@@ -2,6 +2,8 @@
 
 ## UX Fix Pack
 
+- **Fix 29c — Photo capture dialog** — CameraX front-camera preview + capture in a new `PhotoPromptDialog` composable. Handles runtime permission flow including permanent-block detection and "Open Settings" path. Added CameraX 1.3.1 dependencies and `CAMERA` permission to manifest.
+
 - **Fix 29b — Photo storage utility** — `util/PhotoStorage.kt` saves/deletes/loads 512×512 JPEG quality 80 avatars in `filesDir/avatars/<userId>.jpg`. Center-crops to square before scaling. No Android test environment required at build time.
 
 - **Fix 29a — Photo schema** — Added `photoPath`, `photoPromptCount`, `photoPromptOptOut` columns to `users` table via Room migration 2→3 (non-destructive ALTER TABLE). DAO + repository wrappers added. `deleteUser` now also deletes the avatar file from internal storage.
