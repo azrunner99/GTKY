@@ -21,8 +21,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gtky.app.Constants
 import com.gtky.app.data.entity.QuizResult
+import com.gtky.app.data.entity.User
 import com.gtky.app.data.repository.QuizQuestion
 import com.gtky.app.ui.LanguageToggle
+import com.gtky.app.ui.components.Avatar
 import com.gtky.app.ui.LocalAppLanguage
 import com.gtky.app.ui.t
 import com.gtky.app.ui.theme.GTKYCorrect
@@ -168,6 +170,7 @@ fun QuizScreen(
 
                             QuizQuestionContent(
                                 questionText = forQuiz(questionTemplate, q.subjectUser.name),
+                                subjectUser = q.subjectUser,
                                 subjectName = q.subjectUser.name,
                                 displayOptions = displayOptions,
                                 englishOptions = q.options,
@@ -223,6 +226,7 @@ fun QuizScreen(
 @Composable
 private fun QuizQuestionContent(
     questionText: String,
+    subjectUser: User,
     subjectName: String,
     displayOptions: List<String>,
     englishOptions: List<String>,
@@ -246,13 +250,19 @@ private fun QuizQuestionContent(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
         ) {
-            Text(
-                text = t("About $subjectName", "Sobre $subjectName"),
+            Row(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Avatar(user = subjectUser, size = 32.dp)
+                Text(
+                    text = t("About $subjectName", "Sobre $subjectName"),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
         }
 
         Text(

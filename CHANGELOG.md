@@ -2,6 +2,8 @@
 
 ## UX Fix Pack
 
+- **Fix 29d — Avatar component + wiring** — New `ui/components/Avatar.kt` renders a 2-letter initials circle (deterministic color palette) when no photo is set, or the saved JPEG when one exists. Wired everywhere a user's name appears: 40dp avatars in `PickUserScreen` and `ActiveUsersScreen` user rows; 24dp avatar in the HomeScreen "Signed in as" pill; 32dp avatars in the QuizScreen "About X" subject card; paired overlapping 28dp avatars in `MutualConnectionRow` and `OneWayConnectionRow`; 128dp centered avatar at the top of `ProfileScreen`. `ProfileUiState` now carries the full `User` object to support the profile avatar.
+
 - **Fix 29c — Photo capture dialog** — CameraX front-camera preview + capture in a new `PhotoPromptDialog` composable. Handles runtime permission flow including permanent-block detection and "Open Settings" path. Added CameraX 1.3.1 dependencies and `CAMERA` permission to manifest.
 
 - **Fix 29b — Photo storage utility** — `util/PhotoStorage.kt` saves/deletes/loads 512×512 JPEG quality 80 avatars in `filesDir/avatars/<userId>.jpg`. Center-crops to square before scaling. No Android test environment required at build time.

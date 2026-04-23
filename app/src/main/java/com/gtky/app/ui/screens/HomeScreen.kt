@@ -29,6 +29,7 @@ import com.gtky.app.data.entity.Group
 import com.gtky.app.data.entity.User
 import com.gtky.app.data.repository.SimilarNameMatch
 import com.gtky.app.ui.LanguageToggle
+import com.gtky.app.ui.components.Avatar
 import com.gtky.app.ui.plural
 import com.gtky.app.ui.t
 import com.gtky.app.util.normalizeName
@@ -502,6 +503,8 @@ private fun UserHomeScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    Avatar(user = user, size = 24.dp)
+                    Spacer(Modifier.width(6.dp))
                     Text(
                         text = t("Signed in as ${user.name}", "Conectado como ${user.name}"),
                         fontSize = 13.sp,

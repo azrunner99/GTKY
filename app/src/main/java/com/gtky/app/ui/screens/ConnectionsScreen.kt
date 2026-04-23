@@ -19,6 +19,7 @@ import com.gtky.app.Constants
 import com.gtky.app.data.entity.User
 import com.gtky.app.data.repository.ConnectionEntry
 import com.gtky.app.ui.LanguageToggle
+import com.gtky.app.ui.components.Avatar
 import com.gtky.app.ui.t
 import com.gtky.app.viewmodel.ConnectionDirection
 import com.gtky.app.viewmodel.ConnectionScope
@@ -241,6 +242,8 @@ fun ConnectionsScreen(
                             }
                             OneWayConnectionRow(
                                 rank = index + 1,
+                                from = from,
+                                to = to,
                                 label = label,
                                 score = score,
                                 onClick = {
@@ -304,8 +307,13 @@ private fun MutualConnectionRow(
             fontWeight = FontWeight.Bold,
             fontSize = 16.sp,
             color = rankColor(rank),
-            modifier = Modifier.width(40.dp)
+            modifier = Modifier.width(36.dp)
         )
+        Box(modifier = Modifier.width(52.dp).height(32.dp)) {
+            Avatar(user = entry.userB, size = 28.dp, modifier = Modifier.align(Alignment.CenterEnd))
+            Avatar(user = entry.userA, size = 28.dp, modifier = Modifier.align(Alignment.CenterStart))
+        }
+        Spacer(Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(text = primaryLabel, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -327,7 +335,14 @@ private fun MutualConnectionRow(
 }
 
 @Composable
-private fun OneWayConnectionRow(rank: Int, label: String, score: Double, onClick: (() -> Unit)? = null) {
+private fun OneWayConnectionRow(
+    rank: Int,
+    from: User,
+    to: User,
+    label: String,
+    score: Double,
+    onClick: (() -> Unit)? = null
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -340,8 +355,13 @@ private fun OneWayConnectionRow(rank: Int, label: String, score: Double, onClick
             fontWeight = FontWeight.Bold,
             fontSize = 16.sp,
             color = rankColor(rank),
-            modifier = Modifier.width(40.dp)
+            modifier = Modifier.width(36.dp)
         )
+        Box(modifier = Modifier.width(52.dp).height(32.dp)) {
+            Avatar(user = to, size = 28.dp, modifier = Modifier.align(Alignment.CenterEnd))
+            Avatar(user = from, size = 28.dp, modifier = Modifier.align(Alignment.CenterStart))
+        }
+        Spacer(Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(text = label, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
         }

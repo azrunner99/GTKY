@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.gtky.app.data.entity.SurveyQuestion
+import com.gtky.app.data.entity.User
 import com.gtky.app.data.repository.GTKYRepository
 import com.gtky.app.util.forQuiz
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,6 +17,7 @@ import kotlinx.serialization.json.Json
 
 data class ProfileUiState(
     val isLoading: Boolean = true,
+    val user: User? = null,
     val name: String = "",
     val answers: List<Pair<String, String>> = emptyList()
 )
@@ -40,7 +42,7 @@ class ProfileViewModel(
                 val displayAnswer = translateAnswer(q, answer.answer, language)
                 forQuiz(template, user.name) to displayAnswer
             }
-            _uiState.value = ProfileUiState(isLoading = false, name = user.name, answers = pairs)
+            _uiState.value = ProfileUiState(isLoading = false, user = user, name = user.name, answers = pairs)
         }
     }
 

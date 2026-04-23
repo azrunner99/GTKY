@@ -14,6 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gtky.app.ui.LanguageToggle
+import com.gtky.app.ui.components.Avatar
 import com.gtky.app.ui.plural
 import com.gtky.app.ui.t
 import com.gtky.app.viewmodel.ProfileViewModel
@@ -59,6 +60,16 @@ fun ProfileScreen(
             }
 
             else -> LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
+                item {
+                    state.user?.let { user ->
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Avatar(user = user, size = 128.dp)
+                        }
+                    }
+                }
                 item {
                     val word = plural(state.answers.size, "answer", "answers", "respuesta", "respuestas")
                     Text(
