@@ -155,7 +155,11 @@ class GTKYRepository(val db: GTKYDatabase) {
         db.surveyAnswerDao().deleteAllAnswersForUser(user.id)
         db.quizResultDao().deleteResultsForUser(user.id)
         user.photoPath?.let { path ->
-            try { java.io.File(path).delete() } catch (_: Exception) { }
+            try {
+                val dir = java.io.File(path).parentFile
+                dir?.listFiles { f -> f.name.startsWith("${user.id}_") && f.name.endsWith(".jpg") }
+                    ?.forEach { it.delete() }
+            } catch (_: Exception) { }
         }
         db.userDao().deleteUser(user)
     }
@@ -172,10 +176,12 @@ class GTKYRepository(val db: GTKYDatabase) {
     suspend fun markPhotoPromptOptOut(userId: Long) =
         db.userDao().setPhotoPromptOptOut(userId)
 
-    suspend fun removeUserPhoto(userId: Long) {
+    suspend fun removeUserPhoto(userId: Long, photoPath: String) {
+        try { java.io.File(photoPath).delete() } catch (_: Exception) { }
         val user = db.userDao().getUserById(userId) ?: return
-        user.photoPath?.let { java.io.File(it).delete() }
-        db.userDao().updatePhotoPath(userId, null)
+        if (user.photoPath == photoPath) {
+            db.userDao().updatePhotoPath(userId, null)
+        }
     }
 
     // Groups

@@ -6,12 +6,15 @@ import androidx.lifecycle.viewModelScope
 import com.gtky.app.data.entity.Group
 import com.gtky.app.data.entity.User
 import com.gtky.app.data.repository.GTKYRepository
+import com.gtky.app.util.PhotoStorage
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.io.File
 
 data class UserAnswerDetail(
     val user: User,
-    val answers: List<Pair<String, String>>
+    val answers: List<Pair<String, String>>,
+    val photoHistory: List<String> = emptyList()
 )
 
 data class AdminUiState(
@@ -72,7 +75,7 @@ class AdminViewModel(private val repo: GTKYRepository) : ViewModel() {
         viewModelScope.launch { repo.deleteGroup(group) }
     }
 
-    fun loadUserAnswers(user: User) {
+    fun loadUserAnswers(user: User, filesDir: File) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             val answers = repo.getAllAnswersForUser(user.id)
@@ -83,9 +86,10 @@ class AdminViewModel(private val repo: GTKYRepository) : ViewModel() {
                     displayQ to answer.answer
                 } else null
             }
+            val photoHistory = PhotoStorage.loadAllPhotosForUser(filesDir, user.id)
             _uiState.update {
                 it.copy(
-                    selectedUserDetail = UserAnswerDetail(user, questions),
+                    selectedUserDetail = UserAnswerDetail(user, questions, photoHistory),
                     isLoading = false
                 )
             }
@@ -103,12 +107,18 @@ class AdminViewModel(private val repo: GTKYRepository) : ViewModel() {
         }
     }
 
-    fun removeUserPhoto(user: User) {
+    fun removeUserPhoto(user: User, photoPath: String) {
         viewModelScope.launch {
-            repo.removeUserPhoto(user.id)
+            repo.removeUserPhoto(user.id, photoPath)
             val updatedUser = repo.getUserById(user.id) ?: return@launch
             _uiState.update { state ->
-                state.copy(selectedUserDetail = state.selectedUserDetail?.copy(user = updatedUser))
+                val detail = state.selectedUserDetail ?: return@update state
+                state.copy(
+                    selectedUserDetail = detail.copy(
+                        user = updatedUser,
+                        photoHistory = detail.photoHistory.filter { it != photoPath }
+                    )
+                )
             }
         }
     }

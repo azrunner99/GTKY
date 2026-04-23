@@ -14,12 +14,13 @@ object PhotoStorage {
     private const val DIR = "avatars"
 
     /**
-     * Save a bitmap to internal storage at avatars/<userId>.jpg, downscaled to 512x512
-     * (center-cropped square) and JPEG quality 80. Returns the absolute file path.
+     * Save a bitmap to internal storage at avatars/<userId>_<timestamp>.jpg.
+     * Each call creates a new file — old photos are preserved for admin review.
+     * Returns the absolute file path.
      */
     fun saveAvatar(context: Context, userId: Long, source: Bitmap): String {
         val dir = File(context.filesDir, DIR).apply { mkdirs() }
-        val file = File(dir, "$userId.jpg")
+        val file = File(dir, "${userId}_${System.currentTimeMillis()}.jpg")
         val scaled = cropAndScale(source, SIZE)
         FileOutputStream(file).use { out ->
             scaled.compress(Bitmap.CompressFormat.JPEG, QUALITY, out)
@@ -28,20 +29,32 @@ object PhotoStorage {
         return file.absolutePath
     }
 
-    fun deleteAvatar(context: Context, userId: Long) {
-        val file = File(File(context.filesDir, DIR), "$userId.jpg")
-        if (file.exists()) file.delete()
-    }
-
-    /**
-     * Decode an avatar from disk. Returns null if the file is missing or unreadable.
-     */
     fun loadAvatar(path: String): Bitmap? {
         val file = File(path)
         if (!file.exists()) return null
         return try {
             BitmapFactory.decodeFile(path)
         } catch (_: Exception) { null }
+    }
+
+    /** Returns all photo paths for userId, sorted newest first. */
+    fun loadAllPhotosForUser(filesDir: File, userId: Long): List<String> {
+        val dir = File(filesDir, DIR)
+        if (!dir.exists()) return emptyList()
+        return (dir.listFiles { f ->
+            f.name.startsWith("${userId}_") && f.name.endsWith(".jpg")
+        } ?: emptyArray())
+            .sortedByDescending { it.lastModified() }
+            .map { it.absolutePath }
+    }
+
+    /** Deletes all photos for userId (used when deleting a user). */
+    fun deleteAllPhotosForUser(filesDir: File, userId: Long) {
+        val dir = File(filesDir, DIR)
+        if (!dir.exists()) return
+        dir.listFiles { f ->
+            f.name.startsWith("${userId}_") && f.name.endsWith(".jpg")
+        }?.forEach { it.delete() }
     }
 
     private fun cropAndScale(src: Bitmap, target: Int): Bitmap {

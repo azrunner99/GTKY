@@ -45,7 +45,8 @@ sealed class HomeUiState {
         val answerCount: Int,
         val readyCount: Int = 0,
         val renameError: String? = null,
-        val showPhotoPrompt: Boolean = false
+        val showPhotoPrompt: Boolean = false,
+        val showPhotoReplacement: Boolean = false
     ) : HomeUiState()
 }
 
@@ -307,6 +308,26 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
     fun clearRenameError() {
         val state = _uiState.value as? HomeUiState.UserSelected ?: return
         _uiState.value = state.copy(renameError = null)
+    }
+
+    fun requestPhotoReplacement() {
+        val state = _uiState.value as? HomeUiState.UserSelected ?: return
+        _uiState.value = state.copy(showPhotoReplacement = true)
+    }
+
+    fun replacePhoto(context: android.content.Context, bitmap: android.graphics.Bitmap) {
+        val state = _uiState.value as? HomeUiState.UserSelected ?: return
+        viewModelScope.launch {
+            val path = com.gtky.app.util.PhotoStorage.saveAvatar(context, state.user.id, bitmap)
+            repo.setUserPhotoPath(state.user.id, path)
+            val updatedUser = repo.getUserById(state.user.id) ?: return@launch
+            _uiState.value = state.copy(user = updatedUser, showPhotoReplacement = false)
+        }
+    }
+
+    fun cancelPhotoReplacement() {
+        val state = _uiState.value as? HomeUiState.UserSelected ?: return
+        _uiState.value = state.copy(showPhotoReplacement = false)
     }
 
     fun dismissPhotoPrompt() {

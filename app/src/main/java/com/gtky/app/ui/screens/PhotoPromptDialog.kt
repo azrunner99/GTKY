@@ -48,7 +48,8 @@ enum class PhotoPromptResult {
 @Composable
 fun PhotoPromptDialog(
     showOptOut: Boolean,
-    onResult: (PhotoPromptResult, Bitmap?) -> Unit
+    onResult: (PhotoPromptResult, Bitmap?) -> Unit,
+    isReplacement: Boolean = false
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -82,7 +83,7 @@ fun PhotoPromptDialog(
         onDismissRequest = { onResult(PhotoPromptResult.SKIPPED, null) },
         title = {
             Text(
-                t("Smile!", "¡Sonríe!"),
+                if (isReplacement) t("New Photo", "Nueva Foto") else t("Smile!", "¡Sonríe!"),
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
@@ -94,10 +95,10 @@ fun PhotoPromptDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    t(
-                        "A photo helps people recognize you.",
-                        "Una foto ayuda a que te reconozcan."
-                    ),
+                    if (isReplacement)
+                        t("Take a new photo to update your avatar.", "Toma una nueva foto para actualizar tu avatar.")
+                    else
+                        t("A photo helps people recognize you.", "Una foto ayuda a que te reconozcan."),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center
@@ -185,8 +186,8 @@ fun PhotoPromptDialog(
                 TextButton(
                     onClick = { onResult(PhotoPromptResult.SKIPPED, null) },
                     modifier = Modifier.fillMaxWidth()
-                ) { Text(t("Skip", "Omitir")) }
-                if (showOptOut) {
+                ) { Text(if (isReplacement) t("Cancel", "Cancelar") else t("Skip", "Omitir")) }
+                if (!isReplacement && showOptOut) {
                     TextButton(
                         onClick = { onResult(PhotoPromptResult.OPTED_OUT, null) },
                         modifier = Modifier.fillMaxWidth()

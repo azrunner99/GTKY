@@ -9,6 +9,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -129,6 +130,7 @@ fun HomeScreen(
                 onSignOut = { viewModel.signOut() },
                 onRenameUser = { newName -> viewModel.renameUser(state.user.id, newName) },
                 onClearRenameError = { viewModel.clearRenameError() },
+                onReplacePhoto = { viewModel.requestPhotoReplacement() },
                 onUpdateFilterPreview = { gIds, pIds -> viewModel.updateFilterPreview(gIds, pIds) },
                 onClearPendingSubject = { viewModel.clearPendingQuizSubject() },
                 pendingOpenQuizDialog = pendingOpenQuizDialog,
@@ -144,6 +146,20 @@ fun HomeScreen(
                                 ?: viewModel.dismissPhotoPrompt()
                             PhotoPromptResult.SKIPPED -> viewModel.dismissPhotoPrompt()
                             PhotoPromptResult.OPTED_OUT -> viewModel.optOutOfPhotoPrompts()
+                        }
+                    }
+                )
+            }
+            if (state.showPhotoReplacement) {
+                val context = LocalContext.current
+                PhotoPromptDialog(
+                    showOptOut = false,
+                    isReplacement = true,
+                    onResult = { result, bitmap ->
+                        when (result) {
+                            PhotoPromptResult.CAPTURED -> bitmap?.let { viewModel.replacePhoto(context, it) }
+                                ?: viewModel.cancelPhotoReplacement()
+                            else -> viewModel.cancelPhotoReplacement()
                         }
                     }
                 )
@@ -404,6 +420,7 @@ private fun UserHomeScreen(
     onSignOut: () -> Unit,
     onRenameUser: (String) -> Unit,
     onClearRenameError: () -> Unit,
+    onReplacePhoto: () -> Unit,
     onUpdateFilterPreview: (List<Long>, Set<Long>) -> Unit,
     onClearPendingSubject: () -> Unit,
     pendingOpenQuizDialog: Boolean = false,
@@ -533,6 +550,16 @@ private fun UserHomeScreen(
                         Icon(
                             Icons.Default.Edit,
                             contentDescription = t("Edit name", "Editar nombre"),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    IconButton(
+                        onClick = onReplacePhoto,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.CameraAlt,
+                            contentDescription = t("Change photo", "Cambiar foto"),
                             modifier = Modifier.size(16.dp)
                         )
                     }
