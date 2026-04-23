@@ -184,6 +184,25 @@ private fun UserHomeScreen(
     onSignOut: () -> Unit
 ) {
     var showQuizGroupPicker by remember { mutableStateOf(false) }
+    var showSignOutDialog by remember { mutableStateOf(false) }
+
+    if (showSignOutDialog) {
+        AlertDialog(
+            onDismissRequest = { showSignOutDialog = false },
+            title = { Text(t("Switch user?", "¿Cambiar usuario?")) },
+            text = { Text(t("You can sign back in from the picker.", "Puedes volver a iniciar sesión desde el selector.")) },
+            confirmButton = {
+                Button(onClick = { showSignOutDialog = false; onSignOut() }) {
+                    Text(t("Switch", "Cambiar"))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSignOutDialog = false }) {
+                    Text(t("Cancel", "Cancelar"))
+                }
+            }
+        )
+    }
 
     if (showQuizGroupPicker) {
         QuizGroupPickerDialog(
@@ -202,11 +221,36 @@ private fun UserHomeScreen(
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(Modifier.height(40.dp))
+        Spacer(Modifier.height(16.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = t("Signed in as ${user.name}", "Conectado como ${user.name}"),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                TextButton(onClick = { showSignOutDialog = true }) {
+                    Text(t("Not you?", "¿No eres tú?"), fontSize = 12.sp)
+                }
+            }
+        }
+
+        Spacer(Modifier.height(20.dp))
 
         Text(
             text = t("Hey, ${user.name}!", "¡Hola, ${user.name}!"),
-            fontSize = 32.sp,
+            fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
@@ -256,7 +300,7 @@ private fun UserHomeScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            TextButton(onClick = onSignOut) { Text(t("Switch User", "Cambiar usuario")) }
+            TextButton(onClick = { showSignOutDialog = true }) { Text(t("Switch User", "Cambiar usuario")) }
             TextButton(onClick = onGoToAdmin) { Text(t("Admin", "Admin")) }
         }
     }

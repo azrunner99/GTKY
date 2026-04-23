@@ -10,7 +10,7 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun IdleTimeout(
-    timeoutMs: Long = 3 * 60 * 1000L,
+    timeoutMs: Long = 90_000L,
     onIdle: () -> Unit,
     content: @Composable () -> Unit
 ) {

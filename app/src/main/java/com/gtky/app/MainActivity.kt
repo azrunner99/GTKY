@@ -34,7 +34,7 @@ class MainActivity : ComponentActivity() {
                 CompositionLocalProvider(LocalAppLanguage provides language) {
                     IdleTimeout(
                         onIdle = {
-                            if (navController.currentDestination?.route != Routes.HOME) {
+                            app.handleIdleTimeout {
                                 navController.navigate(Routes.HOME) {
                                     popUpTo(Routes.HOME) { inclusive = true }
                                 }

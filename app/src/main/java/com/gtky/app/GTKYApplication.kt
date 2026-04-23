@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class GTKYApplication : Application() {
 
@@ -26,6 +27,13 @@ class GTKYApplication : Application() {
         appScope.launch {
             DataSeeder.seedIfNeeded(database)
             _language.value = repository.getLanguage()
+        }
+    }
+
+    fun handleIdleTimeout(onComplete: () -> Unit) {
+        appScope.launch {
+            repository.clearActiveUser()
+            withContext(Dispatchers.Main) { onComplete() }
         }
     }
 
