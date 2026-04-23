@@ -22,6 +22,16 @@ fun t(en: String, es: String): String {
 }
 
 @Composable
+fun plural(count: Int, singularEn: String, pluralEn: String, singularEs: String, pluralEs: String): String {
+    val lang = LocalAppLanguage.current
+    return if (lang == "es") {
+        if (count == 1) singularEs else pluralEs
+    } else {
+        if (count == 1) singularEn else pluralEn
+    }
+}
+
+@Composable
 fun LanguageToggle() {
     val app = LocalContext.current.applicationContext as GTKYApplication
     val language = LocalAppLanguage.current

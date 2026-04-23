@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.gtky.app.data.entity.Group
 import com.gtky.app.data.entity.User
 import com.gtky.app.ui.LanguageToggle
+import com.gtky.app.ui.plural
 import com.gtky.app.ui.t
 import com.gtky.app.viewmodel.AdminViewModel
 
@@ -320,8 +321,9 @@ private fun UserDetailScreen(
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
                 item {
+                    val answersWord = plural(answers.size, "answer", "answers", "respuesta", "respuestas")
                     Text(
-                        "${answers.size} answers",
+                        "${answers.size} $answersWord",
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)

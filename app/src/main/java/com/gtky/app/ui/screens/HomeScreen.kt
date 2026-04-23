@@ -22,6 +22,7 @@ import com.gtky.app.Constants
 import com.gtky.app.data.entity.Group
 import com.gtky.app.data.entity.User
 import com.gtky.app.ui.LanguageToggle
+import com.gtky.app.ui.plural
 import com.gtky.app.ui.t
 import com.gtky.app.viewmodel.HomeUiState
 import com.gtky.app.viewmodel.HomeViewModel
@@ -74,12 +75,7 @@ fun HomeScreen(
             )
         }
         is HomeUiState.PickGroups -> {
-            WelcomeScreen(
-                hasExistingUsers = allUsers.isNotEmpty(),
-                error = null,
-                onNewUser = {},
-                onPickUser = onPickUser
-            )
+            Box(modifier = Modifier.fillMaxSize())
             GroupPickerDialog(
                 groups = state.groups,
                 onConfirm = { selected -> viewModel.finishGroupSelection(state.user, selected) }
@@ -127,12 +123,12 @@ private fun WelcomeScreen(
         if (prefillLastName.isNotEmpty()) lastNameFocusRequester.requestFocus()
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier.align(Alignment.TopEnd)) { LanguageToggle() }
+    Column(modifier = Modifier.fillMaxSize().padding(32.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            LanguageToggle()
+        }
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(32.dp),
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -333,11 +329,10 @@ private fun UserHomeScreen(
             textAlign = TextAlign.Center
         )
 
+        val answeredPrefix = t("You've answered", "Has respondido")
+        val questionsWord = plural(answerCount, "question", "questions", "pregunta", "preguntas")
         Text(
-            text = t(
-                "You've answered $answerCount question${if (answerCount != 1) "s" else ""}",
-                "Has respondido $answerCount pregunta${if (answerCount != 1) "s" else ""}"
-            ),
+            text = "$answeredPrefix $answerCount $questionsWord",
             fontSize = 15.sp,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
             modifier = Modifier.padding(top = 4.dp, bottom = 32.dp)
@@ -501,10 +496,16 @@ private fun QuizGroupPickerDialog(
                                     selectedIds - group.id
                                 else
                                     selectedIds + group.id
-                                if (selectedIds.isEmpty()) allSelected = true
                             }
                         },
                         label = { Text(group.name) }
+                    )
+                }
+                if (!allSelected && selectedIds.isEmpty()) {
+                    Text(
+                        t("Pick at least one group", "Elige al menos un grupo"),
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.error
                     )
                 }
                 if (readyCount > 0) {
@@ -554,21 +555,29 @@ private fun GroupPickerDialog(
         onDismissRequest = { onConfirm(selected) },
         title = { Text(t("Which group are you in?", "¿En qué grupo estás?")) },
         text = {
-            LazyColumn {
-                items(groups) { group ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
-                            checked = group.id in selected,
-                            onCheckedChange = { checked ->
-                                selected = if (checked) selected + group.id else selected - group.id
-                            }
-                        )
-                        Text(group.name, modifier = Modifier.padding(start = 8.dp))
+            Column {
+                LazyColumn {
+                    items(groups) { group ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = group.id in selected,
+                                onCheckedChange = { checked ->
+                                    selected = if (checked) selected + group.id else selected - group.id
+                                }
+                            )
+                            Text(group.name, modifier = Modifier.padding(start = 8.dp))
+                        }
                     }
                 }
+                Text(
+                    t("You can join groups later from the Groups screen.", "Puedes unirte a grupos más tarde desde la pantalla de Grupos."),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    modifier = Modifier.padding(top = 8.dp)
+                )
             }
         },
         confirmButton = {
