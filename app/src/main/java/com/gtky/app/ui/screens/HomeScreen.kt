@@ -14,6 +14,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.gtky.app.Constants
 import com.gtky.app.data.entity.Group
 import com.gtky.app.data.entity.User
 import com.gtky.app.ui.LanguageToggle
@@ -66,6 +67,7 @@ fun HomeScreen(
             UserHomeScreen(
                 user = state.user,
                 answerCount = state.answerCount,
+                readyCount = state.readyCount,
                 groups = groups,
                 onStartSurvey = { onStartSurvey(state.user.id) },
                 onGoToQuiz = { groupIds -> onGoToQuiz(state.user.id, groupIds) },
@@ -171,6 +173,7 @@ private fun WelcomeScreen(
 private fun UserHomeScreen(
     user: com.gtky.app.data.entity.User,
     answerCount: Int,
+    readyCount: Int,
     groups: List<Group>,
     onStartSurvey: () -> Unit,
     onGoToQuiz: (String) -> Unit,
@@ -218,14 +221,27 @@ private fun UserHomeScreen(
 
         HomeButton(t("Answer Survey Questions", "Responder Encuesta"), onClick = onStartSurvey)
         Spacer(Modifier.height(12.dp))
+        val threshold = Constants.QUIZ_UNLOCK_THRESHOLD
+        val quizEnabled = answerCount >= threshold && readyCount >= 1
+        val quizSubtitle = when {
+            answerCount < threshold -> t(
+                "Answer ${threshold - answerCount} more to unlock",
+                "Responde ${threshold - answerCount} más para desbloquear"
+            )
+            readyCount == 0 -> t(
+                "Quiz unlocks when 1+ other person finishes their intro",
+                "El quiz se desbloquea cuando otra persona complete su introducción"
+            )
+            else -> null
+        }
         HomeButton(
             t("Take a Quiz", "Tomar un Quiz"),
             onClick = {
                 if (groups.isEmpty()) onGoToQuiz("0")
                 else showQuizGroupPicker = true
             },
-            enabled = answerCount >= 15,
-            subtitle = if (answerCount < 15) t("Answer ${15 - answerCount} more survey questions to unlock", "Responde ${15 - answerCount} preguntas más para desbloquear") else null
+            enabled = quizEnabled,
+            subtitle = quizSubtitle
         )
         Spacer(Modifier.height(12.dp))
         HomeButton(t("Connections", "Conexiones"), onClick = onGoToConnections)

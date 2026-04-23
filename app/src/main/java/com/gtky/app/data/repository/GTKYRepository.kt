@@ -1,5 +1,6 @@
 package com.gtky.app.data.repository
 
+import com.gtky.app.Constants
 import com.gtky.app.data.dao.ConnectionScore
 import com.gtky.app.data.database.GTKYDatabase
 import com.gtky.app.data.entity.*
@@ -69,8 +70,8 @@ class GTKYRepository(val db: GTKYDatabase) {
         db.userDao().getUsersInGroup(groupId)
 
     // Survey
-    suspend fun getNextSurveyQuestions(userId: Long, count: Int = 20) =
-        db.surveyQuestionDao().getUnansweredQuestionsForUser(userId, count)
+    suspend fun getUnansweredSurveyQuestions(userId: Long) =
+        db.surveyQuestionDao().getUnansweredQuestionsForUser(userId)
 
     fun getAnswerCountForUser(userId: Long): Flow<Int> =
         db.surveyAnswerDao().getAnswerCountForUser(userId)
@@ -148,11 +149,17 @@ class GTKYRepository(val db: GTKYDatabase) {
         return entries.sortedByDescending { it.mutualScore }
     }
 
+    suspend fun getReadyUserCount(excludingUserId: Long): Int {
+        val users = db.userDao().getAllUsers().first()
+        return users.count { it.id != excludingUserId &&
+            db.surveyAnswerDao().getAnswerCountForUserSync(it.id) >= Constants.QUIZ_UNLOCK_THRESHOLD }
+    }
+
     private suspend fun getAllUsersWithMinAnswers(excludeId: Long): List<User> {
         val all = db.userDao().getAllUsers().first()
         return all.filter { user ->
             user.id != excludeId &&
-            db.surveyAnswerDao().getAnswerCountForUserSync(user.id) >= 15
+            db.surveyAnswerDao().getAnswerCountForUserSync(user.id) >= Constants.QUIZ_UNLOCK_THRESHOLD
         }
     }
 

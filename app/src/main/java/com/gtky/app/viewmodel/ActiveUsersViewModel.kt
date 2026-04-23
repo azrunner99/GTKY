@@ -3,6 +3,7 @@ package com.gtky.app.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.gtky.app.Constants
 import com.gtky.app.data.entity.Group
 import com.gtky.app.data.entity.User
 import com.gtky.app.data.repository.GTKYRepository
@@ -34,7 +35,7 @@ class ActiveUsersViewModel(private val repo: GTKYRepository) : ViewModel() {
                 val withCounts = users.map { user ->
                     val count = repo.getAnswerCountForUser(user.id).first()
                     val quizCount = repo.getQuizAnsweredCountForUser(user.id)
-                    UserWithAnswerCount(user, count, quizCount, count >= 15)
+                    UserWithAnswerCount(user, count, quizCount, count >= Constants.QUIZ_UNLOCK_THRESHOLD)
                 }
                 _uiState.update {
                     it.copy(
@@ -55,7 +56,7 @@ class ActiveUsersViewModel(private val repo: GTKYRepository) : ViewModel() {
                     val withCounts = users.map { user ->
                         val count = repo.getAnswerCountForUser(user.id).first()
                         val quizCount = repo.getQuizAnsweredCountForUser(user.id)
-                        UserWithAnswerCount(user, count, quizCount, count >= 15)
+                        UserWithAnswerCount(user, count, quizCount, count >= Constants.QUIZ_UNLOCK_THRESHOLD)
                     }
                     _uiState.update { it.copy(users = withCounts) }
                 }
@@ -66,7 +67,7 @@ class ActiveUsersViewModel(private val repo: GTKYRepository) : ViewModel() {
                     val withCounts = users.map { user ->
                         val count = repo.getAnswerCountForUser(user.id).first()
                         val quizCount = repo.getQuizAnsweredCountForUser(user.id)
-                        UserWithAnswerCount(user, count, quizCount, count >= 15)
+                        UserWithAnswerCount(user, count, quizCount, count >= Constants.QUIZ_UNLOCK_THRESHOLD)
                     }
                     _uiState.update { it.copy(users = withCounts) }
                 }

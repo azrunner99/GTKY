@@ -3,6 +3,7 @@ package com.gtky.app.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.gtky.app.Constants
 import com.gtky.app.data.entity.SurveyQuestion
 import com.gtky.app.data.repository.GTKYRepository
 import kotlinx.coroutines.flow.*
@@ -20,7 +21,8 @@ data class SurveyUiState(
     val selectedAnswer: String? = null,
     val isLoading: Boolean = true,
     val isDone: Boolean = false,
-    val canQuit: Boolean = false
+    val canQuit: Boolean = false,
+    val justUnlockedQuiz: Boolean = false
 )
 
 class SurveyViewModel(private val repo: GTKYRepository, private val userId: Long) : ViewModel() {
@@ -32,16 +34,23 @@ class SurveyViewModel(private val repo: GTKYRepository, private val userId: Long
 
     init {
         viewModelScope.launch {
+            var prevCount = -1
             repo.getAnswerCountForUser(userId).collect { count ->
-                _uiState.update { it.copy(totalAnswered = count, canQuit = count >= 15) }
+                val justUnlocked = prevCount != -1 &&
+                    count == Constants.QUIZ_UNLOCK_THRESHOLD &&
+                    prevCount < Constants.QUIZ_UNLOCK_THRESHOLD
+                prevCount = count
+                _uiState.update {
+                    it.copy(
+                        totalAnswered = count,
+                        canQuit = count >= Constants.QUIZ_UNLOCK_THRESHOLD,
+                        justUnlockedQuiz = if (justUnlocked) true else it.justUnlockedQuiz
+                    )
+                }
             }
         }
-        loadNextBatch()
-    }
-
-    private fun loadNextBatch() {
         viewModelScope.launch {
-            val questions = repo.getNextSurveyQuestions(userId, 20)
+            val questions = repo.getUnansweredSurveyQuestions(userId)
             if (questions.isEmpty()) {
                 _uiState.update { it.copy(isDone = true, isLoading = false) }
                 return@launch
@@ -53,7 +62,7 @@ class SurveyViewModel(private val repo: GTKYRepository, private val userId: Long
 
     private fun showNext() {
         if (pendingQuestions.isEmpty()) {
-            loadNextBatch()
+            _uiState.update { it.copy(isDone = true, isLoading = false) }
             return
         }
         val q = pendingQuestions.removeFirst()
@@ -79,6 +88,10 @@ class SurveyViewModel(private val repo: GTKYRepository, private val userId: Long
             repo.saveSurveyAnswer(userId, q.id, answer)
             showNext()
         }
+    }
+
+    fun clearUnlockToast() {
+        _uiState.update { it.copy(justUnlockedQuiz = false) }
     }
 
     private fun parseOptions(json: String): List<String> =

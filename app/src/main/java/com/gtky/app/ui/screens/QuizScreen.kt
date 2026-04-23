@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.gtky.app.Constants
 import com.gtky.app.ui.LanguageToggle
 import com.gtky.app.ui.LocalAppLanguage
 import com.gtky.app.ui.t
@@ -53,7 +54,7 @@ fun QuizScreen(
                 },
                 actions = {
                     Text(
-                        if (state.canFinish) t("Keep Going!", "¡Sigue adelante!") else t("Remaining: ${5 - state.answeredCount}", "Restantes: ${5 - state.answeredCount}"),
+                        if (state.canFinish) t("Keep Going!", "¡Sigue adelante!") else t("Remaining: ${Constants.QUIZ_MIN_QUESTIONS_BEFORE_FINISH - state.answeredCount}", "Restantes: ${Constants.QUIZ_MIN_QUESTIONS_BEFORE_FINISH - state.answeredCount}"),
                         modifier = Modifier.padding(end = 4.dp),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -242,8 +243,8 @@ private fun NoEligibleUsersContent(onBack: () -> Unit) {
     ) {
         Text(t("Not enough players yet!", "¡Aún no hay suficientes jugadores!"), fontSize = 20.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
         Text(
-            t("Other users need to answer at least 15 survey questions before you can be quizzed on them.",
-              "Otros usuarios necesitan responder al menos 15 preguntas de la encuesta."),
+            t("Other users need to answer at least ${Constants.QUIZ_UNLOCK_THRESHOLD} survey questions before you can be quizzed on them.",
+              "Otros usuarios necesitan responder al menos ${Constants.QUIZ_UNLOCK_THRESHOLD} preguntas de la encuesta."),
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
         )

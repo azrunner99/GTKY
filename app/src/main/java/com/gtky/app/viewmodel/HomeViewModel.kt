@@ -16,7 +16,7 @@ sealed class HomeUiState {
     object Loading : HomeUiState()
     data class NoUser(val error: String? = null) : HomeUiState()
     data class PickGroups(val user: User, val groups: List<Group>) : HomeUiState()
-    data class UserSelected(val user: User, val answerCount: Int) : HomeUiState()
+    data class UserSelected(val user: User, val answerCount: Int, val readyCount: Int = 0) : HomeUiState()
 }
 
 class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
@@ -96,7 +96,8 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
     private fun transitionToUserSelected(user: User) {
         viewModelScope.launch {
             repo.getAnswerCountForUser(user.id).collect { c ->
-                _uiState.value = HomeUiState.UserSelected(user, c)
+                val readyCount = repo.getReadyUserCount(user.id)
+                _uiState.value = HomeUiState.UserSelected(user, c, readyCount)
             }
         }
     }

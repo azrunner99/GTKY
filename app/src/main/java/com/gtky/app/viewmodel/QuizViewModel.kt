@@ -3,6 +3,7 @@ package com.gtky.app.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.gtky.app.Constants
 import com.gtky.app.data.entity.QuizResult
 import com.gtky.app.data.repository.GTKYRepository
 import com.gtky.app.data.repository.QuizQuestion
@@ -77,7 +78,7 @@ class QuizViewModel(
                 isAnswerRevealed = true,
                 correctCount = if (isCorrect) it.correctCount + 1 else it.correctCount,
                 answeredCount = newAnswered,
-                canFinish = newAnswered >= 5,
+                canFinish = newAnswered >= Constants.QUIZ_MIN_QUESTIONS_BEFORE_FINISH,
                 sessionResults = pendingResults.toList()
             )
         }

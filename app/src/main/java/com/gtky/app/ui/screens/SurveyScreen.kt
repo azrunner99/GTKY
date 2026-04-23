@@ -12,10 +12,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.gtky.app.Constants
 import com.gtky.app.ui.LanguageToggle
 import com.gtky.app.ui.LocalAppLanguage
+import com.gtky.app.ui.QuestionUtils
 import com.gtky.app.ui.t
+import com.gtky.app.ui.theme.GTKYCorrect
 import com.gtky.app.viewmodel.SurveyViewModel
+import kotlinx.coroutines.delay
 
 @Composable
 fun SurveyScreen(
@@ -52,32 +56,102 @@ fun SurveyScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(24.dp),
-            contentAlignment = Alignment.Center
         ) {
-            when {
-                state.isLoading -> CircularProgressIndicator()
-                state.isDone -> AllAnsweredContent(onBack = onBack)
-                state.currentQuestion != null -> {
-                    val q = state.currentQuestion!!
-                    val template = if (language == "es" && q.questionTemplateEs.isNotEmpty())
-                        q.questionTemplateEs else q.questionTemplate
-                    val displayOptions = if (language == "es" && state.optionsEs.isNotEmpty())
-                        state.optionsEs else state.options
-
-                    QuestionContent(
-                        questionTemplate = template
-                            .replace("[NAME]", t("you", "ti"))
-                            .replaceFirstChar { it.uppercase() },
-                        displayOptions = displayOptions,
-                        englishOptions = state.options,
-                        selectedAnswer = state.selectedAnswer,
-                        answeredCount = state.totalAnswered,
-                        canQuit = state.canQuit,
-                        onAnswer = { englishAnswer -> viewModel.submitAnswer(englishAnswer) },
-                        onSkip = { viewModel.skipQuestion() },
-                        onQuit = onBack
+            Column(modifier = Modifier.fillMaxSize()) {
+                val q = state.currentQuestion
+                if (!state.isLoading && !state.isDone && q != null) {
+                    val progress = minOf(
+                        state.totalAnswered.toFloat() / Constants.QUIZ_UNLOCK_THRESHOLD, 1f
                     )
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = categoryLabel(q.category, language).uppercase(),
+                            fontSize = 11.sp,
+                            letterSpacing = 1.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                        if (state.totalAnswered >= Constants.QUIZ_UNLOCK_THRESHOLD) {
+                            Text(
+                                text = t("Keep Going!", "¡Sigue adelante!"),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = GTKYCorrect
+                            )
+                        }
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    when {
+                        state.isLoading -> CircularProgressIndicator()
+                        state.isDone -> AllAnsweredContent(onBack = onBack)
+                        q != null -> {
+                            val displayOptions = if (language == "es" && state.optionsEs.isNotEmpty())
+                                state.optionsEs else state.options
+
+                            val displayTemplate = if (language == "es" && q.questionTemplateEs.isNotEmpty())
+                                QuestionUtils.toSelfEs(q.questionTemplateEs)
+                            else
+                                QuestionUtils.toSelfEn(q.questionTemplate)
+
+                            QuestionContent(
+                                questionTemplate = displayTemplate,
+                                displayOptions = displayOptions,
+                                englishOptions = state.options,
+                                selectedAnswer = state.selectedAnswer,
+                                canQuit = state.canQuit,
+                                onAnswer = { englishAnswer -> viewModel.submitAnswer(englishAnswer) },
+                                onSkip = { viewModel.skipQuestion() },
+                                onQuit = onBack
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (state.justUnlockedQuiz) {
+                LaunchedEffect(true) {
+                    delay(2500)
+                    viewModel.clearUnlockToast()
+                }
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Card(
+                        modifier = Modifier.padding(32.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                    ) {
+                        Text(
+                            text = t(
+                                "Quiz unlocked! Keep going or tap Finish.",
+                                "¡Quiz desbloqueado! Sigue respondiendo o toca Terminado."
+                            ),
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
                 }
             }
         }
@@ -90,7 +164,6 @@ private fun QuestionContent(
     displayOptions: List<String>,
     englishOptions: List<String>,
     selectedAnswer: String?,
-    answeredCount: Int,
     canQuit: Boolean,
     onAnswer: (String) -> Unit,
     onSkip: () -> Unit,
@@ -113,7 +186,9 @@ private fun QuestionContent(
         displayOptions.forEachIndexed { index, displayOption ->
             OutlinedButton(
                 onClick = { onAnswer(englishOptions.getOrElse(index) { displayOption }) },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
                 enabled = selectedAnswer == null
             ) {
                 Text(displayOption, fontSize = 16.sp)
@@ -122,24 +197,12 @@ private fun QuestionContent(
 
         Spacer(Modifier.height(4.dp))
 
-        if (answeredCount < 15) {
-            Text(
-                text = t("Questions Remaining: ${15 - answeredCount}", "Preguntas restantes: ${15 - answeredCount}"),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary
-            )
-        } else {
-            Text(
-                text = t("Keep Going!", "¡Sigue adelante!"),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = com.gtky.app.ui.theme.GTKYCorrect
-            )
-            Spacer(Modifier.height(4.dp))
+        if (canQuit) {
             Button(
                 onClick = onQuit,
-                modifier = Modifier.fillMaxWidth().height(48.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
             ) {
                 Text(t("Finished", "Terminado"), fontSize = 16.sp)
             }
@@ -170,5 +233,27 @@ private fun AllAnsweredContent(onBack: () -> Unit) {
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
         )
         Button(onClick = onBack) { Text(t("Back Home", "Inicio")) }
+    }
+}
+
+private fun categoryLabel(category: String, lang: String): String {
+    if (lang != "es") return category
+    return when (category) {
+        "Food" -> "Comida"
+        "Travel" -> "Viajes"
+        "Entertainment" -> "Entretenimiento"
+        "Lifestyle" -> "Estilo de vida"
+        "Career" -> "Carrera"
+        "Social" -> "Social"
+        "Fashion" -> "Moda"
+        "Health" -> "Salud"
+        "Humor" -> "Humor"
+        "Money" -> "Dinero"
+        "Movies" -> "Películas"
+        "Music" -> "Música"
+        "Sports" -> "Deportes"
+        "Style" -> "Estilo"
+        "Tech" -> "Tecnología"
+        else -> category
     }
 }
