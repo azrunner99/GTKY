@@ -8,7 +8,8 @@ import com.gtky.app.data.repository.GTKYRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -36,18 +37,27 @@ class ConnectionsViewModel(private val repo: GTKYRepository) : ViewModel() {
     fun loadConnections() {
         viewModelScope.launch {
             val activeUserId = repo.getActiveUserId()
-            val myCount = if (activeUserId != null) repo.getAnswerCountForUser(activeUserId).first() else 0
-            repo.getAllUsers().collect { users ->
-                val entries = repo.getAllConnectionEntries(users)
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        connections = entries,
-                        activeUserId = activeUserId,
-                        myAnswerCount = myCount
-                    )
+            _uiState.update { it.copy(activeUserId = activeUserId) }
+
+            val answerCountFlow = if (activeUserId != null)
+                repo.getAnswerCountForUser(activeUserId)
+            else
+                flowOf(0)
+
+            combine(
+                repo.getAllUsers(),
+                answerCountFlow
+            ) { users, myCount -> users to myCount }
+                .collect { (users, myCount) ->
+                    val entries = repo.getAllConnectionEntries(users)
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            connections = entries,
+                            myAnswerCount = myCount
+                        )
+                    }
                 }
-            }
         }
     }
 
