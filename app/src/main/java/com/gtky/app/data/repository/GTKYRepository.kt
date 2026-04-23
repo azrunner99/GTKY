@@ -4,6 +4,7 @@ import com.gtky.app.Constants
 import com.gtky.app.data.dao.ConnectionScore
 import com.gtky.app.data.database.GTKYDatabase
 import com.gtky.app.data.entity.*
+import com.gtky.app.util.normalizeName
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -92,7 +93,7 @@ class GTKYRepository(val db: GTKYDatabase) {
 
     suspend fun getUserByName(name: String) = db.userDao().getUserByName(name)
 
-    suspend fun createUser(name: String): Long = db.userDao().insertUser(User(name = name.trim()))
+    suspend fun createUser(name: String): Long = db.userDao().insertUser(User(name = normalizeName(name)))
 
     suspend fun deleteUser(user: User) {
         db.surveyAnswerDao().deleteAllAnswersForUser(user.id)
@@ -101,7 +102,7 @@ class GTKYRepository(val db: GTKYDatabase) {
     }
 
     suspend fun renameUser(userId: Long, newName: String) =
-        db.userDao().updateName(userId, newName.trim())
+        db.userDao().updateName(userId, normalizeName(newName))
 
     // Groups
     fun getAllGroups(): Flow<List<Group>> = db.groupDao().getAllGroups()

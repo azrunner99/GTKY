@@ -3,7 +3,9 @@ package com.gtky.app.data.database
 import com.gtky.app.data.entity.AppConfig
 import com.gtky.app.data.entity.QuestionType
 import com.gtky.app.data.entity.SurveyQuestion
+import com.gtky.app.util.normalizeName
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 object DataSeeder {
@@ -36,6 +38,16 @@ object DataSeeder {
                 }
             }
             db.appConfigDao().setValue(AppConfig("seeded_es", "true"))
+        }
+        if (db.appConfigDao().getValue("normalized_names_v1") == null) {
+            val allUsers = db.userDao().getAllUsers().first()
+            for (user in allUsers) {
+                val normalized = normalizeName(user.name)
+                if (normalized != user.name && normalized.isNotEmpty()) {
+                    db.userDao().updateName(user.id, normalized)
+                }
+            }
+            db.appConfigDao().setValue(AppConfig("normalized_names_v1", "true"))
         }
     }
 

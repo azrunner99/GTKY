@@ -2,6 +2,8 @@
 
 ## UX Fix Pack
 
+- **Fix 27 — Name capitalization normalization** — New `util/NameFormat.kt` helper `normalizeName()` applies strict title-case (`"alex SMITH"` → `"Alex Smith"`, `"mary-jane"` → `"Mary-Jane"`). Applied at every write path (`createUser`, `renameUser`) and at duplicate-name comparison. One-time migration in `DataSeeder` rewrites all existing users on app launch (gated by new `normalized_names_v1` AppConfig flag, no Room version bump). Sign-up form and rename dialog show a live preview ("Will be saved as: …") when the typed value differs from the normalized form. 12 unit tests in `NameFormatTest.kt`.
+
 - **Fix 26 — Housekeeping** — 26a: Deleted orphaned `countAvailableQuestions` from `GTKYRepository` (no callers since Fix 16 moved pool-size logic in-memory). 26b: Two previously fire-and-forget coroutines in `HomeViewModel.transitionToUserSelected` (`readyUsersJob`, `subjectPoolsJob`) are now tracked `Job?` fields. All four jobs are cancelled at the top of `transitionToUserSelected` and in `signOut`, closing the stale-write window on rapid sign-out/sign-in.
 
 - **Fix 25 — Profile screen respects the current language** — `ProfileViewModel` now takes a `language: String` constructor parameter. The `init` block picks `questionTemplateEs` over `questionTemplate` when `language == "es"`, and translates stored English answer text to Spanish by index-matching against `optionsJsonEs`. `NavGraph` reads `GTKYApplication.language` as state and passes it into `ProfileViewModel.Factory` with a `key = "profile-$userId-$language"` so the ViewModel is recreated on language toggle.

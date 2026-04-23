@@ -7,6 +7,7 @@ import com.gtky.app.data.entity.Group
 import com.gtky.app.data.entity.User
 import com.gtky.app.data.repository.GTKYRepository
 import com.gtky.app.data.repository.SubjectPool
+import com.gtky.app.util.normalizeName
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -141,9 +142,10 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
             return
         }
         viewModelScope.launch {
-            val existing = repo.getUserByName(name.trim())
+            val normalizedName = normalizeName(name)
+            val existing = repo.getUserByName(normalizedName)
             if (existing != null) {
-                val parts = name.trim().split(" ", limit = 2)
+                val parts = normalizedName.split(" ", limit = 2)
                 _uiState.value = HomeUiState.DuplicateName(
                     firstName = parts.getOrElse(0) { "" },
                     lastName = parts.getOrElse(1) { "" },
@@ -236,7 +238,12 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
         if (newName.isBlank()) return
         viewModelScope.launch {
             val cur = _uiState.value as? HomeUiState.UserSelected ?: return@launch
-            val existing = repo.getUserByName(newName.trim())
+            val normalized = normalizeName(newName)
+            if (normalized.isBlank()) {
+                _uiState.value = cur.copy(renameError = "Name cannot be empty")
+                return@launch
+            }
+            val existing = repo.getUserByName(normalized)
             if (existing != null && existing.id != userId) {
                 _uiState.value = cur.copy(renameError = "That name is already taken")
                 return@launch

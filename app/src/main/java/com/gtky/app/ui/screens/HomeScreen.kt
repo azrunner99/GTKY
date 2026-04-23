@@ -30,6 +30,7 @@ import com.gtky.app.data.entity.User
 import com.gtky.app.ui.LanguageToggle
 import com.gtky.app.ui.plural
 import com.gtky.app.ui.t
+import com.gtky.app.util.normalizeName
 import com.gtky.app.viewmodel.FilterPreview
 import com.gtky.app.viewmodel.HomeUiState
 import com.gtky.app.viewmodel.HomeViewModel
@@ -184,6 +185,18 @@ private fun WelcomeScreen(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { if (canSubmit) onNewUser(fullName) })
             )
+
+            if (firstName.isNotBlank() && lastInitial.isNotBlank()) {
+                val preview = normalizeName(fullName)
+                if (preview != fullName) {
+                    Text(
+                        text = t("Will be saved as: $preview", "Se guardará como: $preview"),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
 
             if (error != null) {
                 Text(
@@ -714,6 +727,16 @@ private fun EditNameDialog(
                     singleLine = true,
                     isError = error != null
                 )
+                if (name.isNotBlank()) {
+                    val preview = normalizeName(name)
+                    if (preview != name.trim()) {
+                        Text(
+                            text = t("Will be saved as: $preview", "Se guardará como: $preview"),
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+                        )
+                    }
+                }
                 if (error != null) {
                     Text(error, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
                 }
