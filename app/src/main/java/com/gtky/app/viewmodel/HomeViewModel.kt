@@ -69,6 +69,8 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
     private val _groupMembersMap = MutableStateFlow<Map<Long, Set<Long>>>(emptyMap())
 
     private var answerCountJob: Job? = null
+    private var readyUsersJob: Job? = null
+    private var subjectPoolsJob: Job? = null
     private var quizzableUsersJob: Job? = null
     private var filterPreviewJob: Job? = null
 
@@ -174,6 +176,10 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
 
     private fun transitionToUserSelected(user: User) {
         answerCountJob?.cancel()
+        readyUsersJob?.cancel()
+        subjectPoolsJob?.cancel()
+        quizzableUsersJob?.cancel()
+
         answerCountJob = viewModelScope.launch {
             combine(
                 repo.getAnswerCountForUser(user.id),
@@ -184,15 +190,14 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
                     _uiState.value = HomeUiState.UserSelected(user, myCount, readyCount)
                 }
         }
-        viewModelScope.launch {
+        readyUsersJob = viewModelScope.launch {
             _readyUsersByGroup.value = repo.getReadyUsersByGroup(user.id, _groups.value)
         }
-        viewModelScope.launch {
+        subjectPoolsJob = viewModelScope.launch {
             _allSubjectPools.value = repo.loadAllSubjectPools(user.id)
             val groupIds = _groups.value.map { it.id }
             _groupMembersMap.value = repo.getGroupMembersMap(groupIds)
         }
-        quizzableUsersJob?.cancel()
         quizzableUsersJob = viewModelScope.launch {
             repo.getQuizzableUsers(user.id).collect { users ->
                 _quizzableUsers.value = users
@@ -251,6 +256,8 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
         viewModelScope.launch {
             repo.clearActiveUser()
             answerCountJob?.cancel()
+            readyUsersJob?.cancel()
+            subjectPoolsJob?.cancel()
             quizzableUsersJob?.cancel()
             _uiState.value = HomeUiState.NoUser()
         }

@@ -183,24 +183,6 @@ class GTKYRepository(val db: GTKYDatabase) {
         return buildQuizSessionFromPools(subjectPools, timesQuizzed, count)
     }
 
-    suspend fun countAvailableQuestions(
-        quizTakerId: Long,
-        groupIds: List<Long>,
-        subjectUserIds: List<Long> = emptyList()
-    ): Int {
-        val eligibleUsers = getEligibleSubjects(quizTakerId, groupIds, subjectUserIds)
-        if (eligibleUsers.isEmpty()) return 0
-        var total = 0
-        for (subjectUser in eligibleUsers) {
-            val alreadyAttempted = db.quizResultDao()
-                .getAlreadyAttemptedQuestionIds(quizTakerId, subjectUser.id).toSet()
-            total += db.surveyQuestionDao()
-                .getAnsweredQuestionsForUser(subjectUser.id, 50)
-                .count { it.id !in alreadyAttempted }
-        }
-        return total
-    }
-
     fun observeTotalAnswers(): Flow<Int> = db.surveyAnswerDao().getTotalAnswerCountFlow()
 
     fun getQuizzableUsers(excludeUserId: Long): Flow<List<User>> =
