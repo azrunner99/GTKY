@@ -16,6 +16,8 @@ data class UserAnswerDetail(
 
 data class AdminUiState(
     val isAuthenticated: Boolean = false,
+    val isPinDefault: Boolean = false,
+    val mustChangePin: Boolean = false,
     val pinError: String? = null,
     val users: List<User> = emptyList(),
     val groups: List<Group> = emptyList(),
@@ -29,11 +31,19 @@ class AdminViewModel(private val repo: GTKYRepository) : ViewModel() {
     private val _uiState = MutableStateFlow(AdminUiState())
     val uiState: StateFlow<AdminUiState> = _uiState.asStateFlow()
 
+    init {
+        viewModelScope.launch {
+            val isPinDefault = repo.getAdminPinIsDefault()
+            _uiState.update { it.copy(isPinDefault = isPinDefault) }
+        }
+    }
+
     fun authenticate(pin: String) {
         viewModelScope.launch {
             val valid = repo.verifyAdminPin(pin)
             if (valid) {
-                _uiState.update { it.copy(isAuthenticated = true, pinError = null) }
+                val mustChange = repo.getAdminPinIsDefault()
+                _uiState.update { it.copy(isAuthenticated = true, pinError = null, mustChangePin = mustChange) }
                 loadUsers()
             } else {
                 _uiState.update { it.copy(pinError = "Incorrect PIN") }
@@ -104,7 +114,7 @@ class AdminViewModel(private val repo: GTKYRepository) : ViewModel() {
                     _uiState.update { it.copy(pinError = "New PINs do not match") }
                 else -> {
                     repo.setAdminPin(newPin)
-                    _uiState.update { it.copy(pinChangeSuccess = true, pinError = null) }
+                    _uiState.update { it.copy(pinChangeSuccess = true, pinError = null, mustChangePin = false, isPinDefault = false) }
                 }
             }
         }

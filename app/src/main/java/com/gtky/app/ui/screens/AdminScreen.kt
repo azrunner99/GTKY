@@ -38,6 +38,7 @@ fun AdminScreen(
     if (!state.isAuthenticated) {
         PinEntryScreen(
             error = state.pinError,
+            isPinDefault = state.isPinDefault,
             onSubmit = { pin -> viewModel.authenticate(pin) },
             onBack = onBack
         )
@@ -167,10 +168,25 @@ fun AdminScreen(
             }
         )
     }
+
+    if (state.mustChangePin) {
+        ChangePinDialog(
+            error = state.pinError,
+            success = state.pinChangeSuccess,
+            forced = true,
+            onConfirm = { current, new, confirm -> viewModel.changePin(current, new, confirm) },
+            onDismiss = { viewModel.clearPinChangeStatus() }
+        )
+    }
 }
 
 @Composable
-private fun PinEntryScreen(error: String?, onSubmit: (String) -> Unit, onBack: () -> Unit) {
+private fun PinEntryScreen(
+    error: String?,
+    isPinDefault: Boolean,
+    onSubmit: (String) -> Unit,
+    onBack: () -> Unit
+) {
     var pin by remember { mutableStateOf("") }
 
     Column(
@@ -181,6 +197,15 @@ private fun PinEntryScreen(error: String?, onSubmit: (String) -> Unit, onBack: (
         Text(t("Admin Access", "Acceso Admin"), fontSize = 28.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
         Text(t("Enter your PIN", "Ingresa tu PIN"), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+        if (isPinDefault) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                t("First time? Default PIN is 1234. You'll be asked to change it.",
+                  "¿Primera vez? El PIN predeterminado es 1234. Se te pedirá cambiarlo."),
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f)
+            )
+        }
         Spacer(Modifier.height(32.dp))
 
         OutlinedTextField(
@@ -363,6 +388,7 @@ private fun CreateGroupDialog(onConfirm: (String) -> Unit, onDismiss: () -> Unit
 private fun ChangePinDialog(
     error: String?,
     success: Boolean,
+    forced: Boolean = false,
     onConfirm: (String, String, String) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -371,8 +397,8 @@ private fun ChangePinDialog(
     var confirm by remember { mutableStateOf("") }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Change PIN") },
+        onDismissRequest = if (forced) ({}) else onDismiss,
+        title = { Text(if (forced) t("Set a New PIN", "Establecer un nuevo PIN") else "Change PIN") },
         text = {
             if (success) {
                 Text("PIN changed successfully!", color = com.gtky.app.ui.theme.GTKYCorrect)
@@ -416,7 +442,7 @@ private fun ChangePinDialog(
             }
         },
         dismissButton = {
-            if (!success) TextButton(onClick = onDismiss) { Text("Cancel") }
+            if (!success && !forced) TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
 }

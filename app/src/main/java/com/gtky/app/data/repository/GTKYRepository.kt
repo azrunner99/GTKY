@@ -218,8 +218,13 @@ class GTKYRepository(val db: GTKYDatabase) {
     suspend fun getAdminPin(): String =
         db.appConfigDao().getValue("admin_pin") ?: "1234"
 
-    suspend fun setAdminPin(pin: String) =
+    suspend fun getAdminPinIsDefault(): Boolean =
+        db.appConfigDao().getValue("admin_pin_is_default") == "true"
+
+    suspend fun setAdminPin(pin: String) {
         db.appConfigDao().setValue(AppConfig("admin_pin", pin))
+        db.appConfigDao().deleteKey("admin_pin_is_default")
+    }
 
     suspend fun verifyAdminPin(pin: String): Boolean =
         getAdminPin() == pin

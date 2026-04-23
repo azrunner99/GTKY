@@ -14,9 +14,18 @@ object DataSeeder {
         }
         if (db.appConfigDao().getValue("admin_pin") == null) {
             db.appConfigDao().setValue(AppConfig("admin_pin", "1234"))
+            db.appConfigDao().setValue(AppConfig("admin_pin_is_default", "true"))
         }
         if (db.appConfigDao().getValue("seeded") == null) {
             db.appConfigDao().setValue(AppConfig("seeded", "true"))
+        }
+        if (db.appConfigDao().getValue("seeded_options") == null) {
+            db.surveyQuestionDao().updateOptionsByTemplate(
+                "How does [NAME] take their coffee?",
+                """["Black","Cream or milk only","Sugar only","Both cream and sugar","Doesn't drink coffee"]""",
+                """["Solo/negro","Solo crema o leche","Solo azúcar","Con crema y azúcar","No toma café"]"""
+            )
+            db.appConfigDao().setValue(AppConfig("seeded_options", "true"))
         }
         if (db.appConfigDao().getValue("seeded_es") == null) {
             val patch = buildSpanishPatch()
@@ -266,8 +275,8 @@ object DataSeeder {
             "¿[NAME] prefiere fiestas grandes o reuniones pequeñas?", "Fiestas grandes", "Reuniones pequeñas"),
         tf("Does [NAME] prefer window or aisle seat on a plane?", "Window", "Aisle", "Quirky",
             "¿[NAME] prefiere asiento de ventana o pasillo en el avión?", "Ventana", "Pasillo"),
-        mc("How does [NAME] take their coffee?", listOf("Black", "With cream/milk", "With sugar", "Doesn't drink coffee"), "Quirky",
-            "¿Cómo toma su café [NAME]?", listOf("Solo/negro", "Con crema/leche", "Con azúcar", "No toma café")),
+        mc("How does [NAME] take their coffee?", listOf("Black", "Cream or milk only", "Sugar only", "Both cream and sugar", "Doesn't drink coffee"), "Quirky",
+            "¿Cómo toma su café [NAME]?", listOf("Solo/negro", "Solo crema o leche", "Solo azúcar", "Con crema y azúcar", "No toma café")),
         mc("What does [NAME] do first thing in the morning?", listOf("Check their phone", "Work out", "Make coffee/breakfast", "Jump in the shower"), "Quirky",
             "¿Qué hace [NAME] primero en la mañana?", listOf("Revisar el teléfono", "Hacer ejercicio", "Café/desayuno", "Darse una ducha")),
         mc("When [NAME] is sick, what do they want?", listOf("Soup and rest", "To be left alone", "Company and care", "To power through"), "Quirky",
