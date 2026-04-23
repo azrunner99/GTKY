@@ -571,21 +571,28 @@ private fun QuizFilterDialog(
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
-                        filteredPersonList.forEach { person ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Checkbox(
-                                    checked = person.id in selectedPersonIds,
-                                    onCheckedChange = { checked ->
-                                        selectedPersonIds = if (checked)
-                                            selectedPersonIds + person.id
-                                        else
-                                            selectedPersonIds - person.id
-                                    }
-                                )
-                                Text(person.name, modifier = Modifier.padding(start = 4.dp))
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 280.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            items(filteredPersonList, key = { it.id }) { person ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Checkbox(
+                                        checked = person.id in selectedPersonIds,
+                                        onCheckedChange = { checked ->
+                                            selectedPersonIds = if (checked)
+                                                selectedPersonIds + person.id
+                                            else
+                                                selectedPersonIds - person.id
+                                        }
+                                    )
+                                    Text(person.name, modifier = Modifier.padding(start = 4.dp))
+                                }
                             }
                         }
                         if (showGroupIgnoredHint) {
