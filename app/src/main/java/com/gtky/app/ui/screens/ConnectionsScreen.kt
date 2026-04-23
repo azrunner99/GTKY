@@ -14,10 +14,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.gtky.app.data.entity.User
 import com.gtky.app.data.repository.ConnectionEntry
 import com.gtky.app.ui.LanguageToggle
 import com.gtky.app.ui.t
-import com.gtky.app.viewmodel.ConnectionMode
+import com.gtky.app.viewmodel.ConnectionDirection
+import com.gtky.app.viewmodel.ConnectionScope
 import com.gtky.app.viewmodel.ConnectionsViewModel
 import kotlin.math.roundToInt
 
@@ -27,6 +29,35 @@ fun ConnectionsScreen(
     onBack: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
+
+    val scopeFiltered = if (state.scope == ConnectionScope.MINE && state.activeUserId != null) {
+        state.connections.filter {
+            it.userA.id == state.activeUserId || it.userB.id == state.activeUserId
+        }
+    } else {
+        state.connections
+    }
+
+    val mutualList = scopeFiltered.sortedByDescending { it.mutualScore }
+
+    val oneWayList = scopeFiltered
+        .flatMap { entry ->
+            buildList {
+                if (entry.scoreAtoB > 0) add(Triple(entry.userA, entry.userB, entry.scoreAtoB))
+                if (entry.scoreBtoA > 0) add(Triple(entry.userB, entry.userA, entry.scoreBtoA))
+            }
+        }
+        .let { triples ->
+            if (state.scope == ConnectionScope.MINE && state.activeUserId != null) {
+                triples.filter { (from, to, _) ->
+                    from.id == state.activeUserId || to.id == state.activeUserId
+                }
+            } else triples
+        }
+        .sortedByDescending { it.third }
+
+    val isEmpty = if (state.direction == ConnectionDirection.MUTUAL)
+        mutualList.isEmpty() else oneWayList.isEmpty()
 
     Scaffold(
         topBar = {
@@ -49,20 +80,42 @@ fun ConnectionsScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(t("Show:", "Mostrar:"), fontWeight = FontWeight.Medium)
+                SingleChoiceSegmentedButtonRow {
+                    SegmentedButton(
+                        selected = state.scope == ConnectionScope.MINE,
+                        onClick = { viewModel.setScope(ConnectionScope.MINE) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
+                    ) { Text(t("My Connections", "Mis Conexiones")) }
+                    SegmentedButton(
+                        selected = state.scope == ConnectionScope.EVERYONE,
+                        onClick = { viewModel.setScope(ConnectionScope.EVERYONE) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
+                    ) { Text(t("Everyone", "Todos")) }
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(t("View:", "Ver:"), fontWeight = FontWeight.Medium)
                 SingleChoiceSegmentedButtonRow {
                     SegmentedButton(
-                        selected = state.mode == ConnectionMode.MUTUAL,
-                        onClick = { viewModel.setMode(ConnectionMode.MUTUAL) },
+                        selected = state.direction == ConnectionDirection.MUTUAL,
+                        onClick = { viewModel.setDirection(ConnectionDirection.MUTUAL) },
                         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
                     ) { Text(t("Mutual", "Mutuo")) }
                     SegmentedButton(
-                        selected = state.mode == ConnectionMode.ONE_WAY,
-                        onClick = { viewModel.setMode(ConnectionMode.ONE_WAY) },
+                        selected = state.direction == ConnectionDirection.ONE_WAY,
+                        onClick = { viewModel.setDirection(ConnectionDirection.ONE_WAY) },
                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
                     ) { Text(t("One-Way", "Unidireccional")) }
                 }
@@ -74,47 +127,47 @@ fun ConnectionsScreen(
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
-            } else if (state.connections.isEmpty()) {
+            } else if (isEmpty) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
-                        t("No connections yet.\nComplete some quizzes to see how well you know each other!",
-                      "Aún no hay conexiones.\n¡Completa algunos quizzes para ver qué tan bien se conocen!"),
+                        text = if (state.scope == ConnectionScope.MINE)
+                            t(
+                                "You haven't been in any quizzes yet. Take a quiz, or wait for someone to take a quiz about you.",
+                                "Aún no has participado en ningún quiz. Toma un quiz o espera que alguien tome uno sobre ti."
+                            )
+                        else
+                            t(
+                                "No connections yet.\nComplete some quizzes to see how well you know each other!",
+                                "Aún no hay conexiones.\n¡Completa algunos quizzes para ver qué tan bien se conocen!"
+                            ),
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                         modifier = Modifier.padding(32.dp)
                     )
                 }
             } else {
-                val sortedConnections = if (state.mode == ConnectionMode.MUTUAL) {
-                    state.connections.sortedByDescending { it.mutualScore }
-                } else {
-                    state.connections
-                        .flatMap { entry ->
-                            buildList {
-                                if (entry.scoreAtoB > 0) add(Triple(entry.userA, entry.userB, entry.scoreAtoB))
-                                if (entry.scoreBtoA > 0) add(Triple(entry.userB, entry.userA, entry.scoreBtoA))
-                            }
-                        }
-                        .sortedByDescending { it.third }
-                }
-
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    if (state.mode == ConnectionMode.MUTUAL) {
-                        itemsIndexed(state.connections.sortedByDescending { it.mutualScore }) { index, entry ->
-                            MutualConnectionRow(rank = index + 1, entry = entry)
+                    if (state.direction == ConnectionDirection.MUTUAL) {
+                        itemsIndexed(mutualList) { index, entry ->
+                            MutualConnectionRow(
+                                rank = index + 1,
+                                entry = entry,
+                                isMineScope = state.scope == ConnectionScope.MINE,
+                                activeUserId = state.activeUserId
+                            )
                             HorizontalDivider()
                         }
                     } else {
-                        val oneWay = state.connections
-                            .flatMap { entry ->
-                                buildList {
-                                    if (entry.scoreAtoB > 0) add(Triple(entry.userA, entry.userB, entry.scoreAtoB))
-                                    if (entry.scoreBtoA > 0) add(Triple(entry.userB, entry.userA, entry.scoreBtoA))
-                                }
+                        itemsIndexed(oneWayList) { index, (from, to, score) ->
+                            val label = if (state.scope == ConnectionScope.MINE && state.activeUserId != null) {
+                                if (from.id == state.activeUserId)
+                                    t("You know ${to.name}", "Conoces a ${to.name}")
+                                else
+                                    t("${from.name} knows you", "${from.name} te conoce")
+                            } else {
+                                t("${from.name} knows ${to.name}", "${from.name} conoce a ${to.name}")
                             }
-                            .sortedByDescending { it.third }
-                        itemsIndexed(oneWay) { index, (from, to, score) ->
-                            OneWayConnectionRow(rank = index + 1, fromName = from.name, toName = to.name, score = score)
+                            OneWayConnectionRow(rank = index + 1, label = label, score = score)
                             HorizontalDivider()
                         }
                     }
@@ -125,7 +178,31 @@ fun ConnectionsScreen(
 }
 
 @Composable
-private fun MutualConnectionRow(rank: Int, entry: ConnectionEntry) {
+private fun MutualConnectionRow(
+    rank: Int,
+    entry: ConnectionEntry,
+    isMineScope: Boolean,
+    activeUserId: Long?
+) {
+    val primaryLabel: String
+    val scoreLineA: String?
+    val scoreLineB: String?
+
+    if (isMineScope && activeUserId != null) {
+        val (myScore, theirScore, otherName) = if (entry.userA.id == activeUserId)
+            Triple(entry.scoreAtoB, entry.scoreBtoA, entry.userB.name)
+        else
+            Triple(entry.scoreBtoA, entry.scoreAtoB, entry.userA.name)
+
+        primaryLabel = t("You & $otherName", "Tú y $otherName")
+        scoreLineA = if (myScore > 0) t("you → $otherName: ${myScore.roundToInt()}%", "tú → $otherName: ${myScore.roundToInt()}%") else null
+        scoreLineB = if (theirScore > 0) t("$otherName → you: ${theirScore.roundToInt()}%", "$otherName → ti: ${theirScore.roundToInt()}%") else null
+    } else {
+        primaryLabel = "${entry.userA.name} & ${entry.userB.name}"
+        scoreLineA = if (entry.scoreAtoB > 0) "${entry.userA.name} → ${entry.userB.name}: ${entry.scoreAtoB.roundToInt()}%" else null
+        scoreLineB = if (entry.scoreBtoA > 0) "${entry.userB.name} → ${entry.userA.name}: ${entry.scoreBtoA.roundToInt()}%" else null
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -140,25 +217,13 @@ private fun MutualConnectionRow(rank: Int, entry: ConnectionEntry) {
             modifier = Modifier.width(40.dp)
         )
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "${entry.userA.name} & ${entry.userB.name}",
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 16.sp
-            )
+            Text(text = primaryLabel, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (entry.scoreAtoB > 0) {
-                    Text(
-                        "${entry.userA.name} → ${entry.userB.name}: ${entry.scoreAtoB.roundToInt()}%",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
+                if (scoreLineA != null) {
+                    Text(scoreLineA, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 }
-                if (entry.scoreBtoA > 0) {
-                    Text(
-                        "${entry.userB.name} → ${entry.userA.name}: ${entry.scoreBtoA.roundToInt()}%",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
+                if (scoreLineB != null) {
+                    Text(scoreLineB, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 }
             }
         }
@@ -172,7 +237,7 @@ private fun MutualConnectionRow(rank: Int, entry: ConnectionEntry) {
 }
 
 @Composable
-private fun OneWayConnectionRow(rank: Int, fromName: String, toName: String, score: Double) {
+private fun OneWayConnectionRow(rank: Int, label: String, score: Double) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -187,11 +252,7 @@ private fun OneWayConnectionRow(rank: Int, fromName: String, toName: String, sco
             modifier = Modifier.width(40.dp)
         )
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = t("$fromName knows $toName", "$fromName conoce a $toName"),
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 16.sp
-            )
+            Text(text = label, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
         }
         Text(
             text = "${score.roundToInt()}%",
