@@ -16,6 +16,8 @@ import kotlinx.coroutines.launch
 data class QuizUiState(
     val isLoading: Boolean = true,
     val noEligibleUsers: Boolean = false,
+    val noQuestionsForSubject: Boolean = false,
+    val subjectDisplayName: String? = null,
     val closeCount: Int = 0,
     val questions: List<QuizQuestion> = emptyList(),
     val currentIndex: Int = 0,
@@ -35,7 +37,8 @@ data class QuizUiState(
 class QuizViewModel(
     private val repo: GTKYRepository,
     private val quizTakerId: Long,
-    private val groupIds: List<Long>
+    private val groupIds: List<Long>,
+    private val subjectId: Long = -1L
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(QuizUiState())
@@ -49,12 +52,22 @@ class QuizViewModel(
 
     private fun loadQuiz() {
         viewModelScope.launch {
-            val questions = repo.buildQuizSession(quizTakerId, groupIds, 30)
-            if (questions.isEmpty()) {
-                val closeCount = repo.getAlmostReadyUserCount(quizTakerId)
-                _uiState.update { it.copy(isLoading = false, noEligibleUsers = true, closeCount = closeCount) }
+            if (subjectId != -1L) {
+                val subjectUser = repo.getUserById(subjectId)
+                val questions = repo.buildQuizSessionForSubject(quizTakerId, subjectId, 30)
+                if (questions.isEmpty()) {
+                    _uiState.update { it.copy(isLoading = false, noQuestionsForSubject = true, subjectDisplayName = subjectUser?.name) }
+                } else {
+                    _uiState.update { it.copy(isLoading = false, questions = questions) }
+                }
             } else {
-                _uiState.update { it.copy(isLoading = false, questions = questions) }
+                val questions = repo.buildQuizSession(quizTakerId, groupIds, 30)
+                if (questions.isEmpty()) {
+                    val closeCount = repo.getAlmostReadyUserCount(quizTakerId)
+                    _uiState.update { it.copy(isLoading = false, noEligibleUsers = true, closeCount = closeCount) }
+                } else {
+                    _uiState.update { it.copy(isLoading = false, questions = questions) }
+                }
             }
         }
     }
@@ -138,10 +151,11 @@ class QuizViewModel(
     class Factory(
         private val repo: GTKYRepository,
         private val quizTakerId: Long,
-        private val groupIds: List<Long>
+        private val groupIds: List<Long>,
+        private val subjectId: Long = -1L
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            QuizViewModel(repo, quizTakerId, groupIds) as T
+            QuizViewModel(repo, quizTakerId, groupIds, subjectId) as T
     }
 }

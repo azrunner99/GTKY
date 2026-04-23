@@ -17,7 +17,7 @@ object Routes {
     const val HOME = "home"
     const val PICK_USER = "pick_user"
     const val SURVEY = "survey/{userId}"
-    const val QUIZ = "quiz/{userId}/{groupIds}"
+    const val QUIZ = "quiz/{userId}/{groupIds}?subjectId={subjectId}"
     const val CONNECTIONS = "connections"
     const val ACTIVE_USERS = "active_users"
     const val GROUPS = "groups"
@@ -25,6 +25,7 @@ object Routes {
 
     fun survey(userId: Long) = "survey/$userId"
     fun quiz(userId: Long, groupIds: String) = "quiz/$userId/$groupIds"
+    fun quizSubject(quizTakerId: Long, subjectId: Long) = "quiz/$quizTakerId/0?subjectId=$subjectId"
 }
 
 @Composable
@@ -80,13 +81,15 @@ fun GTKYNavGraph(navController: NavHostController) {
             Routes.QUIZ,
             arguments = listOf(
                 navArgument("userId") { type = NavType.LongType },
-                navArgument("groupIds") { type = NavType.StringType }
+                navArgument("groupIds") { type = NavType.StringType },
+                navArgument("subjectId") { type = NavType.LongType; defaultValue = -1L }
             )
         ) { backStack ->
             val userId = backStack.arguments!!.getLong("userId")
             val groupIds = backStack.arguments!!.getString("groupIds") ?: "0"
             val groupIdList = groupIds.split(",").mapNotNull { it.toLongOrNull() }
-            val vm: QuizViewModel = viewModel(factory = QuizViewModel.Factory(repo, userId, groupIdList))
+            val subjectId = backStack.arguments!!.getLong("subjectId")
+            val vm: QuizViewModel = viewModel(factory = QuizViewModel.Factory(repo, userId, groupIdList, subjectId))
             QuizScreen(
                 viewModel = vm,
                 onBack = { navController.popBackStack() },
@@ -105,10 +108,16 @@ fun GTKYNavGraph(navController: NavHostController) {
 
         composable(Routes.ACTIVE_USERS) {
             val vm: ActiveUsersViewModel = viewModel(factory = ActiveUsersViewModel.Factory(repo))
+            val activeUsersState by vm.uiState.collectAsState()
             ActiveUsersScreen(
                 viewModel = vm,
                 onBack = { navController.popBackStack() },
-                onGoToGroups = { navController.navigate(Routes.GROUPS) }
+                onGoToGroups = { navController.navigate(Routes.GROUPS) },
+                onStartSubjectQuiz = { subjectUserId ->
+                    activeUsersState.activeUserId?.let { quizTakerId ->
+                        navController.navigate(Routes.quizSubject(quizTakerId, subjectUserId))
+                    }
+                }
             )
         }
 

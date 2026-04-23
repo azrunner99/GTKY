@@ -109,6 +109,10 @@ fun QuizScreen(
                 ) {
                     when {
                         state.isLoading -> CircularProgressIndicator()
+                        state.noQuestionsForSubject -> AcedSubjectContent(
+                            name = state.subjectDisplayName ?: "",
+                            onBack = onBack
+                        )
                         state.noEligibleUsers -> NoEligibleUsersContent(
                             closeCount = state.closeCount,
                             onGoToSurvey = onGoToSurvey,
@@ -315,6 +319,27 @@ private fun QuizResultsScreen(correct: Int, total: Int, onBack: () -> Unit) {
         Spacer(Modifier.height(40.dp))
         Button(onClick = onBack, modifier = Modifier.fillMaxWidth().height(52.dp)) {
             Text(t("Back Home", "Inicio"), fontSize = 16.sp)
+        }
+    }
+}
+
+@Composable
+private fun AcedSubjectContent(name: String, onBack: () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            t("You've already aced every question about $name!", "¡Ya dominaste todas las preguntas sobre $name!"),
+            fontSize = 20.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center
+        )
+        Text(
+            t("Check back later when $name answers more questions.", "Vuelve más tarde cuando $name responda más preguntas."),
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+        )
+        Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
+            Text(t("Back", "Atrás"))
         }
     }
 }

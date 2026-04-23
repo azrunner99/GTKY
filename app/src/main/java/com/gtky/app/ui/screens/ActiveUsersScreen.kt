@@ -1,6 +1,7 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.gtky.app.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -27,10 +28,30 @@ import kotlinx.coroutines.launch
 fun ActiveUsersScreen(
     viewModel: ActiveUsersViewModel,
     onBack: () -> Unit,
-    onGoToGroups: () -> Unit = {}
+    onGoToGroups: () -> Unit = {},
+    onStartSubjectQuiz: (Long) -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     val scope = rememberCoroutineScope()
+    var pendingSubjectUser by remember { mutableStateOf<UserWithAnswerCount?>(null) }
+
+    if (pendingSubjectUser != null) {
+        val subject = pendingSubjectUser!!
+        AlertDialog(
+            onDismissRequest = { pendingSubjectUser = null },
+            title = { Text(t("Quiz about ${subject.user.name}?", "¿Quiz sobre ${subject.user.name}?")) },
+            text = { Text(t("Start a quiz session focused on ${subject.user.name}.", "Iniciar una sesión de quiz sobre ${subject.user.name}.")) },
+            confirmButton = {
+                Button(onClick = {
+                    onStartSubjectQuiz(subject.user.id)
+                    pendingSubjectUser = null
+                }) { Text(t("Start Quiz", "Iniciar Quiz")) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingSubjectUser = null }) { Text(t("Cancel", "Cancelar")) }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -97,9 +118,12 @@ fun ActiveUsersScreen(
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(state.users) { userWithCount ->
+                        val isCurrentUser = userWithCount.user.id == state.activeUserId
                         UserRow(
                             userWithCount = userWithCount,
-                            isCurrentUser = userWithCount.user.id == state.activeUserId
+                            isCurrentUser = isCurrentUser,
+                            onClick = if (userWithCount.isEligible && !isCurrentUser)
+                                ({ pendingSubjectUser = userWithCount }) else null
                         )
                         HorizontalDivider()
                     }
@@ -112,11 +136,13 @@ fun ActiveUsersScreen(
 @Composable
 private fun UserRow(
     userWithCount: UserWithAnswerCount,
-    isCurrentUser: Boolean
+    isCurrentUser: Boolean,
+    onClick: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -144,6 +170,13 @@ private fun UserRow(
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
+            if (!userWithCount.isEligible) {
+                Text(
+                    t("Still setting up…", "Aún configurándose…"),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                )
+            }
         }
         if (userWithCount.isEligible) {
             Icon(

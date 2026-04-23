@@ -128,6 +128,28 @@ class GTKYRepository(val db: GTKYDatabase) {
         return questions.shuffled()
     }
 
+    suspend fun buildQuizSessionForSubject(quizTakerId: Long, subjectUserId: Long, count: Int = 30): List<QuizQuestion> {
+        val subjectUser = db.userDao().getUserById(subjectUserId) ?: return emptyList()
+        val alreadyAttempted = db.quizResultDao()
+            .getAlreadyAttemptedQuestionIds(quizTakerId, subjectUserId).toSet()
+        val answered = db.surveyQuestionDao()
+            .getAnsweredQuestionsForUser(subjectUserId, count * 2)
+            .filter { it.id !in alreadyAttempted }
+        if (answered.isEmpty()) return emptyList()
+
+        val questions = mutableListOf<QuizQuestion>()
+        for (q in answered.shuffled()) {
+            val correctAnswer = db.surveyAnswerDao()
+                .getAnswerForUserQuestion(subjectUserId, q.id) ?: continue
+            val enOpts = parseOptions(q.optionsJson)
+            val esOpts = parseOptions(q.optionsJsonEs).takeIf { it.size == enOpts.size } ?: enOpts
+            val shuffledPairs = enOpts.zip(esOpts).shuffled()
+            questions.add(QuizQuestion(q, subjectUser, shuffledPairs.map { it.first }, shuffledPairs.map { it.second }, correctAnswer))
+            if (questions.size >= count) break
+        }
+        return questions.shuffled()
+    }
+
     suspend fun saveQuizResults(results: List<QuizResult>) =
         db.quizResultDao().insertResults(results)
 
