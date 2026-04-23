@@ -72,6 +72,8 @@ data class QuizQuestion(
     val correctAnswer: String
 )
 
+data class SubjectPool(val user: User, val availableCount: Int)
+
 data class ConnectionEntry(
     val userA: User,
     val userB: User,
@@ -263,6 +265,42 @@ class GTKYRepository(val db: GTKYDatabase) {
         return all.filter { user ->
             user.id != excludeId &&
             db.surveyAnswerDao().getAnswerCountForUserSync(user.id) >= Constants.QUIZ_UNLOCK_THRESHOLD
+        }
+    }
+
+    suspend fun loadAllSubjectPools(quizTakerId: Long): List<SubjectPool> {
+        val users = db.userDao().getAllUsers().first()
+        val counts = users.associate { it.id to db.surveyAnswerDao().getAnswerCountForUserSync(it.id) }
+        val eligible = users.filter { it.id != quizTakerId && (counts[it.id] ?: 0) >= Constants.QUIZ_UNLOCK_THRESHOLD }
+        return eligible.map { subject ->
+            val alreadyAttempted = db.quizResultDao()
+                .getAlreadyAttemptedQuestionIds(quizTakerId, subject.id).toSet()
+            val available = db.surveyQuestionDao()
+                .getAnsweredQuestionsForUser(subject.id, 50)
+                .count { it.id !in alreadyAttempted }
+            SubjectPool(subject, available)
+        }
+    }
+
+    suspend fun getGroupMembersMap(groupIds: List<Long>): Map<Long, Set<Long>> =
+        groupIds.associate { gId ->
+            gId to db.userDao().getUsersInGroup(gId).first().map { it.id }.toSet()
+        }
+
+    fun filterSubjectPools(
+        pools: List<SubjectPool>,
+        groupIds: List<Long>,
+        subjectUserIds: List<Long>,
+        groupMembers: Map<Long, Set<Long>>
+    ): List<SubjectPool> = when {
+        subjectUserIds.isNotEmpty() -> {
+            val subjectSet = subjectUserIds.toSet()
+            pools.filter { it.user.id in subjectSet }
+        }
+        groupIds.isEmpty() || 0L in groupIds -> pools
+        else -> {
+            val eligibleIds = groupIds.flatMap { gId -> groupMembers[gId] ?: emptySet() }.toSet()
+            pools.filter { it.user.id in eligibleIds }
         }
     }
 

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.gtky.app.data.entity.Group
 import com.gtky.app.data.entity.User
 import com.gtky.app.data.repository.GTKYRepository
+import com.gtky.app.data.repository.SubjectPool
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,6 +65,9 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
     private val _pendingOpenQuizDialog = MutableStateFlow(false)
     val pendingOpenQuizDialog: StateFlow<Boolean> = _pendingOpenQuizDialog.asStateFlow()
 
+    private val _allSubjectPools = MutableStateFlow<List<SubjectPool>>(emptyList())
+    private val _groupMembersMap = MutableStateFlow<Map<Long, Set<Long>>>(emptyMap())
+
     private var answerCountJob: Job? = null
     private var quizzableUsersJob: Job? = null
     private var filterPreviewJob: Job? = null
@@ -84,6 +88,7 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
         viewModelScope.launch {
             repo.observeTotalAnswers().collect {
                 refreshReadyUsersByGroup()
+                refreshSubjectPools()
             }
         }
         loadActiveUser()
@@ -93,6 +98,15 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
         val activeUserId = (_uiState.value as? HomeUiState.UserSelected)?.user?.id ?: return
         viewModelScope.launch {
             _readyUsersByGroup.value = repo.getReadyUsersByGroup(activeUserId, _groups.value)
+        }
+    }
+
+    private fun refreshSubjectPools() {
+        val activeUserId = (_uiState.value as? HomeUiState.UserSelected)?.user?.id ?: return
+        viewModelScope.launch {
+            _allSubjectPools.value = repo.loadAllSubjectPools(activeUserId)
+            val groupIds = _groups.value.map { it.id }
+            _groupMembersMap.value = repo.getGroupMembersMap(groupIds)
         }
     }
 
@@ -173,6 +187,11 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
         viewModelScope.launch {
             _readyUsersByGroup.value = repo.getReadyUsersByGroup(user.id, _groups.value)
         }
+        viewModelScope.launch {
+            _allSubjectPools.value = repo.loadAllSubjectPools(user.id)
+            val groupIds = _groups.value.map { it.id }
+            _groupMembersMap.value = repo.getGroupMembersMap(groupIds)
+        }
         quizzableUsersJob?.cancel()
         quizzableUsersJob = viewModelScope.launch {
             repo.getQuizzableUsers(user.id).collect { users ->
@@ -201,8 +220,9 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
         filterPreviewJob?.cancel()
         filterPreviewJob = viewModelScope.launch {
             delay(200)
-            val currentUser = (_uiState.value as? HomeUiState.UserSelected)?.user ?: return@launch
-            val available = repo.countAvailableQuestions(currentUser.id, groupIds, personIds.toList())
+            val pools = _allSubjectPools.value
+            val filtered = repo.filterSubjectPools(pools, groupIds, personIds.toList(), _groupMembersMap.value)
+            val available = filtered.sumOf { it.availableCount }.coerceAtMost(30)
             _filterPreview.value = FilterPreview(available)
         }
     }
