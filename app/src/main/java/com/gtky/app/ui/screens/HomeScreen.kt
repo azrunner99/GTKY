@@ -9,8 +9,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
@@ -558,7 +558,7 @@ private fun UserHomeScreen(
                         modifier = Modifier.size(28.dp)
                     ) {
                         Icon(
-                            Icons.Default.CameraAlt,
+                            Icons.Default.PhotoCamera,
                             contentDescription = t("Change photo", "Cambiar foto"),
                             modifier = Modifier.size(16.dp)
                         )
