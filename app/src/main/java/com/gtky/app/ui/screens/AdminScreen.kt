@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.gtky.app.data.entity.Group
 import com.gtky.app.data.entity.User
 import com.gtky.app.ui.LanguageToggle
+import com.gtky.app.ui.components.Avatar
 import com.gtky.app.ui.plural
 import com.gtky.app.ui.t
 import com.gtky.app.viewmodel.AdminViewModel
@@ -49,11 +50,10 @@ fun AdminScreen(
     val detail = state.selectedUserDetail
     if (detail != null) {
         UserDetailScreen(
-            userName = detail.user.name,
+            user = detail.user,
             answers = detail.answers,
-            onDelete = {
-                viewModel.deleteUser(detail.user)
-            },
+            onDelete = { viewModel.deleteUser(detail.user) },
+            onRemovePhoto = { viewModel.removeUserPhoto(detail.user) },
             onBack = { viewModel.clearSelectedUser() }
         )
         return
@@ -244,9 +244,11 @@ private fun AdminUserRow(user: User, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        Avatar(user = user, size = 40.dp)
+        Spacer(Modifier.width(12.dp))
         Text(user.name, fontWeight = FontWeight.Medium, fontSize = 16.sp, modifier = Modifier.weight(1f))
         Icon(Icons.Default.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
     }
@@ -290,36 +292,68 @@ private fun AdminGroupRow(group: Group, onDelete: () -> Unit) {
 
 @Composable
 private fun UserDetailScreen(
-    userName: String,
+    user: User,
     answers: List<Pair<String, String>>,
     onDelete: () -> Unit,
+    onRemovePhoto: () -> Unit,
     onBack: () -> Unit
 ) {
     var confirmDelete by remember { mutableStateOf(false) }
+    var confirmRemovePhoto by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(userName) },
+                title = { Text(user.name) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, t("Back", "Atrás"))
                     }
                 },
                 actions = {
                     IconButton(onClick = { confirmDelete = true }) {
-                        Icon(Icons.Default.Delete, "Delete user", tint = MaterialTheme.colorScheme.error)
+                        Icon(Icons.Default.Delete, t("Delete user", "Eliminar usuario"), tint = MaterialTheme.colorScheme.error)
                     }
                 }
             )
         }
     ) { padding ->
-        if (answers.isEmpty()) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("No survey answers yet.")
+        LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Avatar(user = user, size = 96.dp)
+                    Spacer(Modifier.height(12.dp))
+                    Text(user.name, fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
+                    if (user.photoPath != null) {
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = { confirmRemovePhoto = true },
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                            border = ButtonDefaults.outlinedButtonBorder.copy(
+                                brush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.error)
+                            )
+                        ) {
+                            Text(t("Remove photo", "Eliminar foto"))
+                        }
+                    }
+                }
+                HorizontalDivider()
             }
-        } else {
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
+            if (answers.isEmpty()) {
+                item {
+                    Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                        Text(
+                            t("No survey answers yet.", "Sin respuestas aún."),
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+                        )
+                    }
+                }
+            } else {
                 item {
                     val answersWord = plural(answers.size, "answer", "answers", "respuesta", "respuestas")
                     Text(
@@ -331,7 +365,7 @@ private fun UserDetailScreen(
                 }
                 items(answers) { (question, answer) ->
                     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
-                        Text(question.replace("[NAME]", userName), fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                        Text(question.replace("[NAME]", user.name), fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                         Text(answer, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
                     }
                     HorizontalDivider()
@@ -340,21 +374,40 @@ private fun UserDetailScreen(
         }
     }
 
+    if (confirmRemovePhoto) {
+        AlertDialog(
+            onDismissRequest = { confirmRemovePhoto = false },
+            title = { Text(t("Remove photo?", "¿Eliminar foto?")) },
+            text = { Text(t("This will permanently delete ${user.name}'s photo. They can take a new one next time they sign in.", "Esto eliminará permanentemente la foto de ${user.name}. Pueden tomar una nueva la próxima vez que inicien sesión.")) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmRemovePhoto = false
+                    onRemovePhoto()
+                }) {
+                    Text(t("Remove", "Eliminar"), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmRemovePhoto = false }) { Text(t("Cancel", "Cancelar")) }
+            }
+        )
+    }
+
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            title = { Text("Delete $userName?") },
-            text = { Text("This will permanently remove $userName and all their data. This cannot be undone.") },
+            title = { Text(t("Delete ${user.name}?", "¿Eliminar a ${user.name}?")) },
+            text = { Text(t("This will permanently remove ${user.name} and all their data. This cannot be undone.", "Esto eliminará permanentemente a ${user.name} y todos sus datos. Esta acción no se puede deshacer.")) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmDelete = false
                     onDelete()
                 }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                    Text(t("Delete", "Eliminar"), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { confirmDelete = false }) { Text("Cancel") }
+                TextButton(onClick = { confirmDelete = false }) { Text(t("Cancel", "Cancelar")) }
             }
         )
     }

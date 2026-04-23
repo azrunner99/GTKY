@@ -103,6 +103,16 @@ class AdminViewModel(private val repo: GTKYRepository) : ViewModel() {
         }
     }
 
+    fun removeUserPhoto(user: User) {
+        viewModelScope.launch {
+            repo.removeUserPhoto(user.id)
+            val updatedUser = repo.getUserById(user.id) ?: return@launch
+            _uiState.update { state ->
+                state.copy(selectedUserDetail = state.selectedUserDetail?.copy(user = updatedUser))
+            }
+        }
+    }
+
     fun changePin(currentPin: String, newPin: String, confirmPin: String) {
         viewModelScope.launch {
             when {

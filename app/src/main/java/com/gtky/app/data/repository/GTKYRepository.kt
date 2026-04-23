@@ -172,6 +172,12 @@ class GTKYRepository(val db: GTKYDatabase) {
     suspend fun markPhotoPromptOptOut(userId: Long) =
         db.userDao().setPhotoPromptOptOut(userId)
 
+    suspend fun removeUserPhoto(userId: Long) {
+        val user = db.userDao().getUserById(userId) ?: return
+        user.photoPath?.let { java.io.File(it).delete() }
+        db.userDao().updatePhotoPath(userId, null)
+    }
+
     // Groups
     fun getAllGroups(): Flow<List<Group>> = db.groupDao().getAllGroups()
 
