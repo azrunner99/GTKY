@@ -10,16 +10,17 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun IdleTimeout(
-    timeoutMs: Long = 90_000L,
+    timeoutMs: () -> Long = { 90_000L },
     onIdle: () -> Unit,
     content: @Composable () -> Unit
 ) {
     var lastInteraction by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    val currentTimeout by rememberUpdatedState(timeoutMs)
 
     LaunchedEffect(Unit) {
         while (true) {
             delay(15_000)
-            if (System.currentTimeMillis() - lastInteraction >= timeoutMs) {
+            if (System.currentTimeMillis() - lastInteraction >= currentTimeout()) {
                 lastInteraction = System.currentTimeMillis()
                 onIdle()
             }

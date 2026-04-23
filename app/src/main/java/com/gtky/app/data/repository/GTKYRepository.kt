@@ -43,14 +43,15 @@ internal fun resolveEligibleSubjects(
 internal fun buildQuizSessionFromPools(
     subjectPools: MutableMap<User, MutableList<QuizQuestion>>,
     timesQuizzed: Map<Long, Int>,
-    count: Int
+    count: Int,
+    rng: Random = Random
 ): List<QuizQuestion> {
     val questions = mutableListOf<QuizQuestion>()
     while (questions.size < count && subjectPools.isNotEmpty()) {
         val entries = subjectPools.entries.toList()
         val weights = entries.map { (user, _) -> 1.0 / (1.0 + (timesQuizzed[user.id] ?: 0).toDouble()) }
         val totalWeight = weights.sum()
-        var pick = Random.nextDouble() * totalWeight
+        var pick = rng.nextDouble() * totalWeight
         var chosenKey: User? = null
         for ((entry, weight) in entries.zip(weights)) {
             pick -= weight

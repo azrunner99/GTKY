@@ -10,6 +10,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.gtky.app.ui.IdleTimeout
 import com.gtky.app.ui.LocalAppLanguage
@@ -31,8 +32,18 @@ class MainActivity : ComponentActivity() {
                 val app = application as GTKYApplication
                 val language by app.language.collectAsState()
                 val navController = rememberNavController()
+                val currentEntry by navController.currentBackStackEntryAsState()
+                val currentRoute = currentEntry?.destination?.route
+                val idleTimeoutMs: () -> Long = {
+                    when (currentRoute) {
+                        Routes.SURVEY, Routes.QUIZ -> 180_000L
+                        Routes.ADMIN -> 300_000L
+                        else -> 90_000L
+                    }
+                }
                 CompositionLocalProvider(LocalAppLanguage provides language) {
                     IdleTimeout(
+                        timeoutMs = idleTimeoutMs,
                         onIdle = {
                             app.handleIdleTimeout {
                                 navController.navigate(Routes.HOME) {

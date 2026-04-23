@@ -3,6 +3,7 @@ package com.gtky.app.data.repository
 import com.gtky.app.data.entity.QuestionType
 import com.gtky.app.data.entity.SurveyQuestion
 import com.gtky.app.data.entity.User
+import kotlin.random.Random
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -30,17 +31,22 @@ class QuizSessionTest {
     @Test
     fun distribution_fiveSubjectsEachWith20Questions_allAppear4To8Times() {
         val users = (1L..5L).map { makeUser(it) }
-        val pools = mutableMapOf<User, MutableList<QuizQuestion>>()
-        users.forEachIndexed { i, user -> pools[user] = makePool(user, 20, startId = i * 20L + 1) }
-        val timesQuizzed = users.associate { it.id to 0 }
+        val totalCounts = users.associate { it.id to 0 }.toMutableMap()
 
-        val result = buildQuizSessionFromPools(pools, timesQuizzed, 30)
+        // Aggregate 10 seeded runs (300 picks total) for a deterministic distribution check
+        for (seed in 0L until 10L) {
+            val pools = mutableMapOf<User, MutableList<QuizQuestion>>()
+            users.forEachIndexed { i, user -> pools[user] = makePool(user, 20, startId = i * 20L + 1) }
+            val timesQuizzed = users.associate { it.id to 0 }
+            val result = buildQuizSessionFromPools(pools, timesQuizzed, 30, Random(seed))
+            assertEquals(30, result.size)
+            result.forEach { q -> totalCounts[q.subjectUser.id] = totalCounts.getValue(q.subjectUser.id) + 1 }
+        }
 
-        assertEquals(30, result.size)
-        val countByUser = result.groupBy { it.subjectUser.id }.mapValues { it.value.size }
+        // 10 runs × 30 picks = 300 total; 5 equal-weight subjects → 60 expected each, accept 40-80
         for (user in users) {
-            val c = countByUser[user.id] ?: 0
-            assertTrue("Expected 4-8 for user ${user.id}, got $c", c in 4..8)
+            val c = totalCounts.getValue(user.id)
+            assertTrue("Expected 40-80 aggregate for user ${user.id}, got $c", c in 40..80)
         }
     }
 
