@@ -84,10 +84,8 @@ fun QuizScreen(
             TopAppBar(
                 title = { Text(titleText, maxLines = 1) },
                 navigationIcon = {
-                    if (state.canFinish) {
-                        IconButton(onClick = { showFinishDialog = true }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, t("Finish quiz", "Terminar quiz"))
-                        }
+                    IconButton(onClick = { if (state.canFinish) showFinishDialog = true else onBack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, t("Back", "Atrás"))
                     }
                 },
                 actions = {
