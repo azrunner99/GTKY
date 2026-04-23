@@ -2,6 +2,8 @@
 
 ## UX Fix Pack
 
+- **Fix 29a — Photo schema** — Added `photoPath`, `photoPromptCount`, `photoPromptOptOut` columns to `users` table via Room migration 2→3 (non-destructive ALTER TABLE). DAO + repository wrappers added. `deleteUser` now also deletes the avatar file from internal storage.
+
 - **Fix 28 — Welcome screen rework + similar-name detection** — `WelcomeScreen` now opens with an equal-weight "I'm new here" / "I'm already here" landing choice instead of form-first. Tapping either reveals the form or the picker. New `findSimilarNames()` in `GTKYRepository` catches same-first-name + prefix/initial matches (e.g., typing "Alex S" when "Alex Smith" exists). New `HomeUiState.SimilarName` state and `SimilarNameDialog` show all candidate users as tappable rows plus "None of these — I'm different." Once a user rejects a similar-name suggestion for a specific typed name, re-submitting the same name bypasses fuzzy matching but still enforces hard exact-name uniqueness. 10 unit tests in `SimilarNameTest.kt` cover the classification logic.
 
 - **Fix 27 — Name capitalization normalization** — New `util/NameFormat.kt` helper `normalizeName()` applies strict title-case (`"alex SMITH"` → `"Alex Smith"`, `"mary-jane"` → `"Mary-Jane"`). Applied at every write path (`createUser`, `renameUser`) and at duplicate-name comparison. One-time migration in `DataSeeder` rewrites all existing users on app launch (gated by new `normalized_names_v1` AppConfig flag, no Room version bump). Sign-up form and rename dialog show a live preview ("Will be saved as: …") when the typed value differs from the normalized form. 12 unit tests in `NameFormatTest.kt`.

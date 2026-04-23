@@ -24,6 +24,15 @@ interface UserDao {
     @Query("UPDATE users SET name = :name WHERE id = :id")
     suspend fun updateName(id: Long, name: String)
 
+    @Query("UPDATE users SET photoPath = :path WHERE id = :id")
+    suspend fun updatePhotoPath(id: Long, path: String?)
+
+    @Query("UPDATE users SET photoPromptCount = photoPromptCount + 1 WHERE id = :id")
+    suspend fun incrementPhotoPromptCount(id: Long)
+
+    @Query("UPDATE users SET photoPromptOptOut = 1 WHERE id = :id")
+    suspend fun setPhotoPromptOptOut(id: Long)
+
     @Query("SELECT COUNT(*) FROM users")
     suspend fun getUserCount(): Int
 

@@ -154,11 +154,23 @@ class GTKYRepository(val db: GTKYDatabase) {
     suspend fun deleteUser(user: User) {
         db.surveyAnswerDao().deleteAllAnswersForUser(user.id)
         db.quizResultDao().deleteResultsForUser(user.id)
+        user.photoPath?.let { path ->
+            try { java.io.File(path).delete() } catch (_: Exception) { }
+        }
         db.userDao().deleteUser(user)
     }
 
     suspend fun renameUser(userId: Long, newName: String) =
         db.userDao().updateName(userId, normalizeName(newName))
+
+    suspend fun setUserPhotoPath(userId: Long, path: String?) =
+        db.userDao().updatePhotoPath(userId, path)
+
+    suspend fun incrementPhotoPromptCount(userId: Long) =
+        db.userDao().incrementPhotoPromptCount(userId)
+
+    suspend fun markPhotoPromptOptOut(userId: Long) =
+        db.userDao().setPhotoPromptOptOut(userId)
 
     // Groups
     fun getAllGroups(): Flow<List<Group>> = db.groupDao().getAllGroups()
