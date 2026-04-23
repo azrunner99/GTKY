@@ -77,10 +77,7 @@ fun QuizScreen(
     }
 
     val q = state.currentQuestion
-    val subjectName = q?.subjectUser?.name
-    val titleText = if (subjectName != null)
-        t("Quiz — about $subjectName", "Quiz — sobre $subjectName")
-    else t("Quiz", "Quiz")
+    val titleText = t("Quiz Time", "¡A Preguntar!")
 
     Scaffold(
         topBar = {
@@ -246,23 +243,26 @@ private fun QuizQuestionContent(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Card(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Avatar(user = subjectUser, size = 32.dp)
-                Text(
-                    text = t("About $subjectName", "Sobre $subjectName"),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
+            Avatar(user = subjectUser, size = 96.dp)
+            Text(
+                text = subjectName,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onBackground,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = t("Quiz about them", "Quiz sobre esta persona"),
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
         }
 
         Text(
@@ -271,7 +271,7 @@ private fun QuizQuestionContent(
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
             lineHeight = 28.sp,
-            modifier = Modifier.padding(vertical = 8.dp)
+            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
         )
 
         displayOptions.forEachIndexed { index, displayOption ->
