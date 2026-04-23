@@ -9,7 +9,7 @@ object QuestionUtils {
         r = r.replace("When does [NAME] ", "When do you ", ignoreCase = true)
         r = r.replace("Where does [NAME] ", "Where do you ", ignoreCase = true)
         r = r.replace("does [NAME] ", "do you ", ignoreCase = true)
-        r = r.replace("Is [NAME]'s ", "Is your ", ignoreCase = true)
+        r = r.replace("Is [NAME]'s ", "is your ", ignoreCase = true)
         r = r.replace("is [NAME] ", "are you ", ignoreCase = true)
         r = r.replace("was [NAME] ", "were you ", ignoreCase = true)
         r = r.replace("has [NAME] ", "have you ", ignoreCase = true)

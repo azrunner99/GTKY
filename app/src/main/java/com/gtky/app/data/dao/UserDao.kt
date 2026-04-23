@@ -35,13 +35,4 @@ interface UserDao {
     """)
     fun getUsersInGroup(groupId: Long): Flow<List<User>>
 
-    @Query("""
-        SELECT u.* FROM users u
-        INNER JOIN survey_answers sa ON u.id = sa.userId
-        INNER JOIN user_group_memberships m ON u.id = m.userId
-        WHERE m.groupId = :groupId
-        GROUP BY u.id
-        HAVING COUNT(sa.id) >= 15
-    """)
-    suspend fun getQuizEligibleUsersInGroup(groupId: Long): List<User>
 }
