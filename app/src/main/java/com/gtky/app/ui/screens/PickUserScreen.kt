@@ -28,7 +28,8 @@ import com.gtky.app.ui.t
 fun PickUserScreen(
     users: List<User>,
     onUserSelected: (User) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onGoToAdmin: () -> Unit
 ) {
     var query by remember { mutableStateOf("") }
     var pendingUser by remember { mutableStateOf<User?>(null) }
@@ -105,7 +106,7 @@ fun PickUserScreen(
             HorizontalDivider()
 
             if (filtered.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Text(
                         t("No names match \"$query\"", "Ningún nombre coincide con \"$query\""),
                         textAlign = TextAlign.Center,
@@ -113,7 +114,7 @@ fun PickUserScreen(
                     )
                 }
             } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     items(filtered, key = { it.id }) { user ->
                         val displayName = nameIndexMap[user.id] ?: user.name
                         Row(
@@ -137,6 +138,18 @@ fun PickUserScreen(
                         HorizontalDivider()
                     }
                 }
+            }
+
+            HorizontalDivider()
+            TextButton(
+                onClick = onGoToAdmin,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    t("Admin", "Admin"),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.35f)
+                )
             }
         }
     }

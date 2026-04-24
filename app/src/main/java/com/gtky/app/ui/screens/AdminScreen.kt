@@ -1,21 +1,30 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.gtky.app.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -28,6 +37,7 @@ import com.gtky.app.ui.LanguageToggle
 import com.gtky.app.ui.components.Avatar
 import com.gtky.app.ui.plural
 import com.gtky.app.ui.t
+import com.gtky.app.util.PhotoStorage
 import com.gtky.app.viewmodel.AdminViewModel
 
 @Composable
@@ -36,6 +46,7 @@ fun AdminScreen(
     onBack: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
 
     if (!state.isAuthenticated) {
         PinEntryScreen(
@@ -52,8 +63,9 @@ fun AdminScreen(
         UserDetailScreen(
             user = detail.user,
             answers = detail.answers,
+            photoHistory = detail.photoHistory,
             onDelete = { viewModel.deleteUser(detail.user) },
-            onRemovePhoto = { viewModel.removeUserPhoto(detail.user) },
+            onRemovePhoto = { path -> viewModel.removeUserPhoto(detail.user, path) },
             onBack = { viewModel.clearSelectedUser() }
         )
         return
@@ -106,7 +118,7 @@ fun AdminScreen(
                 }
             } else {
                 items(state.users) { user ->
-                    AdminUserRow(user = user, onClick = { viewModel.loadUserAnswers(user) })
+                    AdminUserRow(user = user, onClick = { viewModel.loadUserAnswers(user, context.filesDir) })
                     HorizontalDivider()
                 }
             }
@@ -190,51 +202,62 @@ private fun PinEntryScreen(
 ) {
     var pin by remember { mutableStateOf("") }
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(t("Admin Access", "Acceso Admin"), fontSize = 28.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
-        Text(t("Enter your PIN", "Ingresa tu PIN"), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
-        if (isPinDefault) {
-            Spacer(Modifier.height(8.dp))
-            Text(
-                t("First time? Default PIN is 1234. You'll be asked to change it.",
-                  "¿Primera vez? El PIN predeterminado es 1234. Se te pedirá cambiarlo."),
-                fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {},
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, t("Back", "Atrás"))
+                    }
+                },
+                actions = { LanguageToggle() }
             )
         }
-        Spacer(Modifier.height(32.dp))
-
-        OutlinedTextField(
-            value = pin,
-            onValueChange = { if (it.length <= 8) pin = it.filter { c -> c.isDigit() } },
-            label = { Text("PIN") }, // PIN is universal
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        if (error != null) {
-            Text(error, color = MaterialTheme.colorScheme.error, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        Button(
-            onClick = { onSubmit(pin) },
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            enabled = pin.isNotBlank()
+    ) { padding ->
+        Column(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Text(t("Enter", "Entrar"))
-        }
+            Text(t("Admin Access", "Acceso Admin"), fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Text(t("Enter your PIN", "Ingresa tu PIN"), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+            if (isPinDefault) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    t("First time? Default PIN is 1234. You'll be asked to change it.",
+                      "¿Primera vez? El PIN predeterminado es 1234. Se te pedirá cambiarlo."),
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f)
+                )
+            }
+            Spacer(Modifier.height(32.dp))
 
-        Spacer(Modifier.height(12.dp))
-        TextButton(onClick = onBack) { Text(t("Back", "Atrás")) }
+            OutlinedTextField(
+                value = pin,
+                onValueChange = { if (it.length <= 8) pin = it.filter { c -> c.isDigit() } },
+                label = { Text("PIN") },
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            if (error != null) {
+                Text(error, color = MaterialTheme.colorScheme.error, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            Button(
+                onClick = { onSubmit(pin) },
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                enabled = pin.isNotBlank()
+            ) {
+                Text(t("Enter", "Entrar"))
+            }
+        }
     }
 }
 
@@ -294,13 +317,16 @@ private fun AdminGroupRow(group: Group, onDelete: () -> Unit) {
 private fun UserDetailScreen(
     user: User,
     answers: List<Pair<String, String>>,
+    photoHistory: List<String>,
     onDelete: () -> Unit,
-    onRemovePhoto: () -> Unit,
+    onRemovePhoto: (String) -> Unit,
     onBack: () -> Unit
 ) {
     var confirmDelete by remember { mutableStateOf(false) }
-    var confirmRemovePhoto by remember { mutableStateOf(false) }
+    var pendingRemovePath by remember { mutableStateOf<String?>(null) }
+    var enlargedPhotoPath by remember { mutableStateOf<String?>(null) }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -314,6 +340,7 @@ private fun UserDetailScreen(
                     IconButton(onClick = { confirmDelete = true }) {
                         Icon(Icons.Default.Delete, t("Delete user", "Eliminar usuario"), tint = MaterialTheme.colorScheme.error)
                     }
+                    LanguageToggle()
                 }
             )
         }
@@ -326,24 +353,43 @@ private fun UserDetailScreen(
                         .padding(vertical = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Avatar(user = user, size = 96.dp)
+                    Avatar(
+                        user = user,
+                        size = 96.dp,
+                        modifier = if (user.photoPath != null)
+                            Modifier.clickable { enlargedPhotoPath = user.photoPath }
+                        else Modifier
+                    )
                     Spacer(Modifier.height(12.dp))
                     Text(user.name, fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
-                    if (user.photoPath != null) {
-                        Spacer(Modifier.height(8.dp))
-                        OutlinedButton(
-                            onClick = { confirmRemovePhoto = true },
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                            border = ButtonDefaults.outlinedButtonBorder.copy(
-                                brush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.error)
+                }
+            }
+            if (photoHistory.isNotEmpty()) {
+                item {
+                    Text(
+                        t("Photo history", "Historial de fotos"),
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                        modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 8.dp)
+                    )
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(photoHistory) { path ->
+                            PhotoHistoryThumb(
+                                path = path,
+                                isCurrent = path == user.photoPath,
+                                onRemove = { pendingRemovePath = path },
+                                onEnlarge = { enlargedPhotoPath = path }
                             )
-                        ) {
-                            Text(t("Remove photo", "Eliminar foto"))
                         }
                     }
+                    Spacer(Modifier.height(8.dp))
                 }
-                HorizontalDivider()
             }
+            item { HorizontalDivider() }
             if (answers.isEmpty()) {
                 item {
                     Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
@@ -374,21 +420,42 @@ private fun UserDetailScreen(
         }
     }
 
-    if (confirmRemovePhoto) {
+    enlargedPhotoPath?.let { path ->
+        val bitmap = remember(path) { PhotoStorage.loadAvatar(path) }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xE6000000))
+                .clickable { enlargedPhotoPath = null },
+            contentAlignment = Alignment.Center
+        ) {
+            if (bitmap != null) {
+                androidx.compose.foundation.Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+    }
+    } // end wrapping Box
+
+    pendingRemovePath?.let { path ->
         AlertDialog(
-            onDismissRequest = { confirmRemovePhoto = false },
-            title = { Text(t("Remove photo?", "¿Eliminar foto?")) },
-            text = { Text(t("This will permanently delete ${user.name}'s photo. They can take a new one next time they sign in.", "Esto eliminará permanentemente la foto de ${user.name}. Pueden tomar una nueva la próxima vez que inicien sesión.")) },
+            onDismissRequest = { pendingRemovePath = null },
+            title = { Text(t("Remove this photo?", "¿Eliminar esta foto?")) },
+            text = { Text(t("This photo will be permanently deleted.", "Esta foto se eliminará de forma permanente.")) },
             confirmButton = {
                 TextButton(onClick = {
-                    confirmRemovePhoto = false
-                    onRemovePhoto()
+                    pendingRemovePath = null
+                    onRemovePhoto(path)
                 }) {
                     Text(t("Remove", "Eliminar"), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { confirmRemovePhoto = false }) { Text(t("Cancel", "Cancelar")) }
+                TextButton(onClick = { pendingRemovePath = null }) { Text(t("Cancel", "Cancelar")) }
             }
         )
     }
@@ -500,4 +567,56 @@ private fun ChangePinDialog(
             if (!success && !forced) TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
+}
+
+@Composable
+private fun PhotoHistoryThumb(
+    path: String,
+    isCurrent: Boolean,
+    onRemove: () -> Unit,
+    onEnlarge: () -> Unit
+) {
+    val bitmap = remember(path) { PhotoStorage.loadAvatar(path) }
+    Box(modifier = Modifier.size(80.dp)) {
+        if (bitmap != null) {
+            androidx.compose.foundation.Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.size(80.dp).clip(CircleShape).clickable(onClick = onEnlarge)
+            )
+        } else {
+            Box(
+                modifier = Modifier.size(80.dp).clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable(onClick = onEnlarge),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("?", fontSize = 24.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        if (isCurrent) {
+            Box(
+                modifier = Modifier.align(Alignment.BottomCenter)
+                    .clip(MaterialTheme.shapes.extraSmall)
+                    .background(MaterialTheme.colorScheme.primary)
+                    .padding(horizontal = 4.dp, vertical = 2.dp)
+            ) {
+                Text(t("current", "actual"), fontSize = 9.sp, color = MaterialTheme.colorScheme.onPrimary)
+            }
+        }
+        IconButton(
+            onClick = onRemove,
+            modifier = Modifier.size(24.dp).align(Alignment.TopEnd)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.errorContainer)
+        ) {
+            Icon(
+                Icons.Default.Close,
+                contentDescription = t("Remove photo", "Eliminar foto"),
+                tint = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.size(14.dp)
+            )
+        }
+    }
 }

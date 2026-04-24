@@ -54,4 +54,7 @@ interface QuizResultDao {
         WHERE quizTakerId = :quizTakerId AND subjectUserId = :subjectUserId
     """)
     suspend fun getAlreadyAttemptedQuestionIds(quizTakerId: Long, subjectUserId: Long): List<Long>
+
+    @Query("SELECT * FROM quiz_results WHERE quizTakerId = :quizTakerId AND subjectUserId = :subjectUserId")
+    suspend fun getResultsBetween(quizTakerId: Long, subjectUserId: Long): List<QuizResult>
 }

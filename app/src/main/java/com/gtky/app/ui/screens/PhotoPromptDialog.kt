@@ -18,6 +18,7 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -48,7 +49,8 @@ enum class PhotoPromptResult {
 @Composable
 fun PhotoPromptDialog(
     showOptOut: Boolean,
-    onResult: (PhotoPromptResult, Bitmap?) -> Unit
+    onResult: (PhotoPromptResult, Bitmap?) -> Unit,
+    isReplacement: Boolean = false
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -82,7 +84,7 @@ fun PhotoPromptDialog(
         onDismissRequest = { onResult(PhotoPromptResult.SKIPPED, null) },
         title = {
             Text(
-                t("Smile!", "¡Sonríe!"),
+                if (isReplacement) t("New Photo", "Nueva Foto") else t("Smile!", "¡Sonríe!"),
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
@@ -94,10 +96,10 @@ fun PhotoPromptDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    t(
-                        "A photo helps people recognize you.",
-                        "Una foto ayuda a que te reconozcan."
-                    ),
+                    if (isReplacement)
+                        t("Take a new photo to update your avatar.", "Toma una nueva foto para actualizar tu avatar.")
+                    else
+                        t("A photo helps people recognize you.", "Una foto ayuda a que te reconozcan."),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center
@@ -108,6 +110,7 @@ fun PhotoPromptDialog(
                         Image(
                             bitmap = capturedBitmap!!.asImageBitmap(),
                             contentDescription = null,
+                            contentScale = ContentScale.Crop,
                             modifier = Modifier
                                 .size(240.dp)
                                 .clip(CircleShape)
@@ -185,8 +188,8 @@ fun PhotoPromptDialog(
                 TextButton(
                     onClick = { onResult(PhotoPromptResult.SKIPPED, null) },
                     modifier = Modifier.fillMaxWidth()
-                ) { Text(t("Skip", "Omitir")) }
-                if (showOptOut) {
+                ) { Text(if (isReplacement) t("Cancel", "Cancelar") else t("Skip", "Omitir")) }
+                if (!isReplacement && showOptOut) {
                     TextButton(
                         onClick = { onResult(PhotoPromptResult.OPTED_OUT, null) },
                         modifier = Modifier.fillMaxWidth()
@@ -266,12 +269,20 @@ private fun captureImage(
 private fun imageProxyToBitmap(image: ImageProxy): Bitmap {
     val buffer = image.planes[0].buffer
     val bytes = ByteArray(buffer.remaining()).also { buffer.get(it) }
-    val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+    val raw = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
 
-    // Front camera produces mirrored output; un-mirror for the stored selfie.
-    val matrix = Matrix().apply {
-        postScale(-1f, 1f, bitmap.width / 2f, bitmap.height / 2f)
-        postRotate(image.imageInfo.rotationDegrees.toFloat())
-    }
-    return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    // Step 1: rotate to upright so subsequent flip uses correct post-rotation dimensions.
+    val rotated = if (image.imageInfo.rotationDegrees != 0) {
+        val m = Matrix().apply { postRotate(image.imageInfo.rotationDegrees.toFloat()) }
+        Bitmap.createBitmap(raw, 0, 0, raw.width, raw.height, m, true)
+            .also { if (it !== raw) raw.recycle() }
+    } else raw
+
+    // Step 2: un-mirror front camera using post-rotation dimensions as pivot.
+    val flipped = Bitmap.createBitmap(
+        rotated, 0, 0, rotated.width, rotated.height,
+        Matrix().apply { postScale(-1f, 1f, rotated.width / 2f, rotated.height / 2f) }, true
+    )
+    if (flipped !== rotated) rotated.recycle()
+    return flipped
 }

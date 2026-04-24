@@ -1,6 +1,8 @@
 package com.gtky.app.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,7 +11,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
@@ -28,6 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.gtky.app.Constants
 import com.gtky.app.data.entity.Group
 import com.gtky.app.data.entity.User
+import com.gtky.app.data.repository.IcebreakerData
 import com.gtky.app.data.repository.SimilarNameMatch
 import com.gtky.app.ui.LanguageToggle
 import com.gtky.app.ui.components.Avatar
@@ -46,8 +48,8 @@ fun HomeScreen(
     onGoToConnections: () -> Unit,
     onGoToActiveUsers: () -> Unit,
     onGoToGroups: () -> Unit,
-    onGoToAdmin: () -> Unit,
-    onPickUser: () -> Unit
+    onPickUser: () -> Unit,
+    onAboutTap: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val allUsers by viewModel.allUsers.collectAsState()
@@ -56,6 +58,18 @@ fun HomeScreen(
     val filterPreview by viewModel.filterPreview.collectAsState()
     val pendingSubjectId by viewModel.pendingQuizSubjectId.collectAsState()
     val pendingOpenQuizDialog by viewModel.pendingOpenQuizDialog.collectAsState()
+    val icebreaker by viewModel.icebreaker.collectAsState()
+    val icebreakerAnswered by viewModel.icebreakerAnswered.collectAsState()
+
+    val app = LocalContext.current.applicationContext as com.gtky.app.GTKYApplication
+    val selectedUser = (uiState as? HomeUiState.UserSelected)?.user
+    LaunchedEffect(selectedUser?.id, selectedUser?.preferredLanguage) {
+        if (selectedUser != null) {
+            selectedUser.preferredLanguage?.let { app.setSessionLanguage(it) }
+        } else if (uiState !is HomeUiState.Loading) {
+            app.restoreLanguage()
+        }
+    }
 
     when (val state = uiState) {
         is HomeUiState.Loading -> {
@@ -65,20 +79,30 @@ fun HomeScreen(
         }
         is HomeUiState.NoUser -> {
             WelcomeScreen(
+                icebreaker = icebreaker,
+                icebreakerAnswered = icebreakerAnswered,
                 hasExistingUsers = allUsers.isNotEmpty(),
                 error = state.error,
                 onNewUser = { name -> viewModel.createAndSelectUser(name) },
                 onPickUser = onPickUser,
+                onIcebreakerAnswer = { qId, ans -> viewModel.recordIcebreakerAnswer(qId, ans) },
+                onIcebreakerSkip = { viewModel.skipIcebreaker() },
+                onAboutTap = onAboutTap,
                 prefillFirstName = state.prefillFirstName,
                 prefillLastName = state.prefillLastName
             )
         }
         is HomeUiState.DuplicateName -> {
             WelcomeScreen(
+                icebreaker = icebreaker,
+                icebreakerAnswered = icebreakerAnswered,
                 hasExistingUsers = allUsers.isNotEmpty(),
                 error = null,
                 onNewUser = {},
                 onPickUser = onPickUser,
+                onIcebreakerAnswer = { qId, ans -> viewModel.recordIcebreakerAnswer(qId, ans) },
+                onIcebreakerSkip = { viewModel.skipIcebreaker() },
+                onAboutTap = onAboutTap,
                 prefillFirstName = state.firstName,
                 prefillLastName = state.lastName
             )
@@ -90,10 +114,15 @@ fun HomeScreen(
         }
         is HomeUiState.SimilarName -> {
             WelcomeScreen(
+                icebreaker = icebreaker,
+                icebreakerAnswered = icebreakerAnswered,
                 hasExistingUsers = allUsers.isNotEmpty(),
                 error = null,
                 onNewUser = {},
                 onPickUser = onPickUser,
+                onIcebreakerAnswer = { qId, ans -> viewModel.recordIcebreakerAnswer(qId, ans) },
+                onIcebreakerSkip = { viewModel.skipIcebreaker() },
+                onAboutTap = onAboutTap,
                 prefillFirstName = state.typedFirstName,
                 prefillLastName = state.typedLastName
             )
@@ -115,7 +144,6 @@ fun HomeScreen(
                 user = state.user,
                 answerCount = state.answerCount,
                 readyCount = state.readyCount,
-                renameError = state.renameError,
                 groups = groups,
                 quizzableUsers = quizzableUsers,
                 filterPreview = filterPreview,
@@ -125,14 +153,13 @@ fun HomeScreen(
                 onGoToConnections = onGoToConnections,
                 onGoToActiveUsers = onGoToActiveUsers,
                 onGoToGroups = onGoToGroups,
-                onGoToAdmin = onGoToAdmin,
                 onSignOut = { viewModel.signOut() },
-                onRenameUser = { newName -> viewModel.renameUser(state.user.id, newName) },
-                onClearRenameError = { viewModel.clearRenameError() },
+                onReplacePhoto = { viewModel.requestPhotoReplacement() },
                 onUpdateFilterPreview = { gIds, pIds -> viewModel.updateFilterPreview(gIds, pIds) },
                 onClearPendingSubject = { viewModel.clearPendingQuizSubject() },
                 pendingOpenQuizDialog = pendingOpenQuizDialog,
-                onClearPendingOpenQuizDialog = { viewModel.clearPendingOpenQuizDialog() }
+                onClearPendingOpenQuizDialog = { viewModel.clearPendingOpenQuizDialog() },
+                onAboutTap = onAboutTap
             )
             if (state.showPhotoPrompt) {
                 val context = LocalContext.current
@@ -148,6 +175,26 @@ fun HomeScreen(
                     }
                 )
             }
+            if (state.showPhotoReplacement) {
+                val context = LocalContext.current
+                PhotoPromptDialog(
+                    showOptOut = false,
+                    isReplacement = true,
+                    onResult = { result, bitmap ->
+                        when (result) {
+                            PhotoPromptResult.CAPTURED -> bitmap?.let { viewModel.replacePhoto(context, it) }
+                                ?: viewModel.cancelPhotoReplacement()
+                            else -> viewModel.cancelPhotoReplacement()
+                        }
+                    }
+                )
+            }
+            if (state.showLanguagePrompt) {
+                LanguagePickerDialog(
+                    onPick = { lang -> viewModel.setPreferredLanguage(lang) },
+                    onDismiss = { viewModel.dismissLanguagePrompt() }
+                )
+            }
         }
     }
 }
@@ -156,10 +203,15 @@ private enum class WelcomeMode { LANDING, NEW_USER_FORM, PICKER_INLINE }
 
 @Composable
 private fun WelcomeScreen(
+    icebreaker: IcebreakerData?,
+    icebreakerAnswered: Boolean,
     hasExistingUsers: Boolean,
     error: String?,
     onNewUser: (String) -> Unit,
     onPickUser: () -> Unit,
+    onIcebreakerAnswer: (questionId: Long, answer: String) -> Unit,
+    onIcebreakerSkip: () -> Unit,
+    onAboutTap: () -> Unit = {},
     prefillFirstName: String = "",
     prefillLastName: String = ""
 ) {
@@ -167,14 +219,23 @@ private fun WelcomeScreen(
         WelcomeMode.NEW_USER_FORM else WelcomeMode.LANDING
     var mode by remember { mutableStateOf(initialMode) }
 
-    Column(modifier = Modifier.fillMaxSize().padding(32.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            LanguageToggle()
-        }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            modifier = Modifier
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onAboutTap
+                )
+                .padding(8.dp)
         ) {
             Text(
                 text = "GTKY",
@@ -185,64 +246,168 @@ private fun WelcomeScreen(
             Text(
                 text = "Get To Know Ya",
                 fontSize = 18.sp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                modifier = Modifier.padding(bottom = 48.dp)
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
             )
+            Text(
+                text = t("tap to learn more", "toca para más info"),
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                modifier = Modifier.padding(top = 2.dp, bottom = 40.dp)
+            )
+        }
 
-            when (mode) {
-                WelcomeMode.LANDING -> LandingChoice(
-                    hasExistingUsers = hasExistingUsers,
-                    onNewHere = { mode = WelcomeMode.NEW_USER_FORM },
-                    onAlreadyHere = onPickUser
-                )
-                WelcomeMode.NEW_USER_FORM -> NewUserForm(
-                    error = error,
-                    prefillFirstName = prefillFirstName,
-                    prefillLastName = prefillLastName,
-                    hasExistingUsers = hasExistingUsers,
-                    onSubmit = onNewUser,
-                    onBackToLanding = { mode = WelcomeMode.LANDING },
-                    onAlreadyHere = onPickUser
-                )
-                else -> { /* unused */ }
-            }
+        when (mode) {
+            WelcomeMode.LANDING -> LandingChoice(
+                icebreaker = icebreaker,
+                icebreakerAnswered = icebreakerAnswered,
+                hasExistingUsers = hasExistingUsers,
+                onNewHere = { mode = WelcomeMode.NEW_USER_FORM },
+                onAlreadyHere = onPickUser,
+                onAnswer = onIcebreakerAnswer,
+                onSkip = onIcebreakerSkip
+            )
+            WelcomeMode.NEW_USER_FORM -> NewUserForm(
+                error = error,
+                prefillFirstName = prefillFirstName,
+                prefillLastName = prefillLastName,
+                hasExistingUsers = hasExistingUsers,
+                onSubmit = onNewUser,
+                onBackToLanding = { mode = WelcomeMode.LANDING },
+                onAlreadyHere = onPickUser
+            )
+            else -> { /* unused */ }
         }
     }
 }
 
 @Composable
 private fun LandingChoice(
+    icebreaker: IcebreakerData?,
+    icebreakerAnswered: Boolean,
     hasExistingUsers: Boolean,
     onNewHere: () -> Unit,
-    onAlreadyHere: () -> Unit
+    onAlreadyHere: () -> Unit,
+    onAnswer: (questionId: Long, answer: String) -> Unit,
+    onSkip: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = t(
-                "Welcome! Are you new here or already signed up?",
-                "¡Bienvenido! ¿Eres nuevo o ya te registraste?"
-            ),
-            fontSize = 16.sp,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.75f),
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-        Button(
-            onClick = onNewHere,
-            modifier = Modifier.fillMaxWidth().height(64.dp)
-        ) {
-            Text(t("I'm new here", "Soy nuevo aquí"), fontSize = 18.sp)
-        }
-        if (hasExistingUsers) {
-            OutlinedButton(
-                onClick = onAlreadyHere,
-                modifier = Modifier.fillMaxWidth().height(64.dp)
+        if (icebreaker != null) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.padding(bottom = 4.dp)
             ) {
-                Text(t("I'm already here", "Ya estoy aquí"), fontSize = 18.sp)
+                Text(
+                    text = icebreaker.enText,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 24.sp
+                )
+                if (icebreaker.esText != icebreaker.enText) {
+                    Text(
+                        text = icebreaker.esText,
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 20.sp,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.45f)
+                    )
+                }
+            }
+
+            icebreaker.enOptions.forEachIndexed { i, enOpt ->
+                val esOpt = icebreaker.esOptions.getOrElse(i) { enOpt }
+                OutlinedButton(
+                    onClick = { onAnswer(icebreaker.questionId, enOpt) },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !icebreakerAnswered
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    ) {
+                        Text(enOpt, fontSize = 15.sp)
+                        if (esOpt != enOpt) {
+                            Text(
+                                esOpt,
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (!icebreakerAnswered) {
+                Spacer(Modifier.height(4.dp))
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 32.dp))
+                TextButton(onClick = onSkip) {
+                    Text(
+                        "Skip this question / Omitir esta pregunta",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                    )
+                }
+            }
+        }
+
+        AnimatedVisibility(visible = icebreakerAnswered || icebreaker == null) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (icebreaker != null) Spacer(Modifier.height(4.dp))
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.padding(bottom = 16.dp)
+                ) {
+                    Text(
+                        text = "Welcome! Are you new here or already signed up?",
+                        fontSize = 16.sp,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.75f)
+                    )
+                    Text(
+                        text = "¡Bienvenido! ¿Eres nuevo o ya te registraste?",
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.45f)
+                    )
+                }
+                Button(
+                    onClick = onNewHere,
+                    modifier = Modifier.fillMaxWidth().height(72.dp)
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("I'm new here", fontSize = 18.sp)
+                        Text(
+                            "Soy nuevo aquí",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.65f)
+                        )
+                    }
+                }
+                if (hasExistingUsers) {
+                    OutlinedButton(
+                        onClick = onAlreadyHere,
+                        modifier = Modifier.fillMaxWidth().height(72.dp)
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("I'm already here", fontSize = 18.sp)
+                            Text(
+                                "Ya estoy aquí",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -390,7 +555,6 @@ private fun UserHomeScreen(
     user: User,
     answerCount: Int,
     readyCount: Int,
-    renameError: String?,
     groups: List<Group>,
     quizzableUsers: List<User>,
     filterPreview: FilterPreview,
@@ -400,19 +564,16 @@ private fun UserHomeScreen(
     onGoToConnections: () -> Unit,
     onGoToActiveUsers: () -> Unit,
     onGoToGroups: () -> Unit,
-    onGoToAdmin: () -> Unit,
     onSignOut: () -> Unit,
-    onRenameUser: (String) -> Unit,
-    onClearRenameError: () -> Unit,
+    onReplacePhoto: () -> Unit,
     onUpdateFilterPreview: (List<Long>, Set<Long>) -> Unit,
     onClearPendingSubject: () -> Unit,
     pendingOpenQuizDialog: Boolean = false,
-    onClearPendingOpenQuizDialog: () -> Unit = {}
+    onClearPendingOpenQuizDialog: () -> Unit = {},
+    onAboutTap: () -> Unit = {}
 ) {
     var showQuizFilterDialog by remember { mutableStateOf(false) }
     var showSignOutDialog by remember { mutableStateOf(false) }
-    var showNotYouDialog by remember { mutableStateOf(false) }
-    var showRenameDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(pendingQuizSubjectId) {
         if (pendingQuizSubjectId != null) {
@@ -427,54 +588,53 @@ private fun UserHomeScreen(
         }
     }
 
-    if (showNotYouDialog) {
-        AlertDialog(
-            onDismissRequest = { showNotYouDialog = false },
-            title = { Text(t("Sign out ${user.name}?", "¿Cerrar sesión de ${user.name}?")) },
-            text = { Text(t("The next person can sign in from the picker.", "La siguiente persona puede iniciar sesión desde el selector.")) },
-            confirmButton = {
-                Button(onClick = { showNotYouDialog = false; onSignOut() }) {
-                    Text(t("Sign out", "Cerrar sesión"))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showNotYouDialog = false }) {
-                    Text(t("Cancel", "Cancelar"))
-                }
-            }
-        )
-    }
-
     if (showSignOutDialog) {
+        val preferEs = user.preferredLanguage == "es"
         AlertDialog(
             onDismissRequest = { showSignOutDialog = false },
-            title = { Text(t("Switch user?", "¿Cambiar usuario?")) },
-            text = { Text(t("You can sign back in from the picker.", "Puedes volver a iniciar sesión desde el selector.")) },
+            title = {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(if (preferEs) "¿Cambiar usuario?" else "Switch user?", fontWeight = FontWeight.Bold)
+                    Text(
+                        if (preferEs) "Switch user?" else "¿Cambiar usuario?",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+                    )
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(if (preferEs) "Puedes volver a iniciar sesión desde el selector." else "You can sign back in from the picker.")
+                    Text(
+                        if (preferEs) "You can sign back in from the picker." else "Puedes volver a iniciar sesión desde el selector.",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+                    )
+                }
+            },
             confirmButton = {
                 Button(onClick = { showSignOutDialog = false; onSignOut() }) {
-                    Text(t("Switch", "Cambiar"))
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(if (preferEs) "Cambiar" else "Switch")
+                        Text(
+                            if (preferEs) "Switch" else "Cambiar",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f)
+                        )
+                    }
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showSignOutDialog = false }) {
-                    Text(t("Cancel", "Cancelar"))
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(if (preferEs) "Cancelar" else "Cancel")
+                        Text(
+                            if (preferEs) "Cancel" else "Cancelar",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
+                        )
+                    }
                 }
-            }
-        )
-    }
-
-    if (showRenameDialog) {
-        EditNameDialog(
-            currentName = user.name,
-            error = renameError,
-            onSave = { newName ->
-                showRenameDialog = false
-                onClearRenameError()
-                onRenameUser(newName)
-            },
-            onDismiss = {
-                showRenameDialog = false
-                onClearRenameError()
             }
         )
     }
@@ -504,54 +664,37 @@ private fun UserHomeScreen(
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(Modifier.height(16.dp))
-
-        Card(
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
+            Text(
+                "GTKY",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Avatar(user = user, size = 24.dp)
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = t("Signed in as ${user.name}", "Conectado como ${user.name}"),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onAboutTap
                     )
-                    IconButton(
-                        onClick = { onClearRenameError(); showRenameDialog = true },
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Edit,
-                            contentDescription = t("Edit name", "Editar nombre"),
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-                TextButton(onClick = { showNotYouDialog = true }) {
-                    Text(t("Not you?", "¿No eres tú?"), fontSize = 12.sp)
-                }
-            }
-            if (renameError != null) {
-                Text(
-                    text = renameError,
-                    color = MaterialTheme.colorScheme.error,
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(start = 12.dp, bottom = 6.dp)
-                )
-            }
+                    .padding(8.dp)
+            )
+            Spacer(Modifier.weight(1f))
+            LanguageToggle()
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(16.dp))
+
+        BoxWithConstraints(
+            modifier = Modifier.clickable(onClick = onReplacePhoto),
+            contentAlignment = Alignment.Center
+        ) {
+            Avatar(user = user, size = maxWidth * 0.55f)
+        }
+
+        Spacer(Modifier.height(16.dp))
 
         Text(
             text = t("Hey, ${user.name}!", "¡Hola, ${user.name}!"),
@@ -599,12 +742,8 @@ private fun UserHomeScreen(
 
         Spacer(Modifier.weight(1f))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            TextButton(onClick = { showSignOutDialog = true }) { Text(t("Switch User", "Cambiar usuario")) }
-            TextButton(onClick = onGoToAdmin) { Text(t("Admin", "Admin")) }
+        TextButton(onClick = { showSignOutDialog = true }) {
+            Text("Switch User / Cambiar usuario")
         }
     }
 }
@@ -951,6 +1090,47 @@ private fun GroupPickerDialog(
         },
         dismissButton = {
             TextButton(onClick = { onConfirm(emptySet()) }) { Text(t("Skip", "Omitir")) }
+        }
+    )
+}
+
+@Composable
+private fun LanguagePickerDialog(
+    onPick: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                "Pick your language\nElige tu idioma",
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(onClick = { onPick("en") }, modifier = Modifier.fillMaxWidth()) {
+                    Text("English", fontSize = 17.sp)
+                }
+                Button(onClick = { onPick("es") }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Español", fontSize = 17.sp)
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    "Ask me later / Pregúntame después",
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                )
+            }
         }
     )
 }

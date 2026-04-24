@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.gtky.app.data.entity.Group
 import com.gtky.app.data.entity.User
 import com.gtky.app.data.repository.GTKYRepository
+import com.gtky.app.data.repository.IcebreakerData
 import com.gtky.app.data.repository.MatchKind
 import com.gtky.app.data.repository.SimilarNameMatch
 import com.gtky.app.data.repository.SubjectPool
@@ -45,7 +46,9 @@ sealed class HomeUiState {
         val answerCount: Int,
         val readyCount: Int = 0,
         val renameError: String? = null,
-        val showPhotoPrompt: Boolean = false
+        val showPhotoPrompt: Boolean = false,
+        val showPhotoReplacement: Boolean = false,
+        val showLanguagePrompt: Boolean = false
     ) : HomeUiState()
 }
 
@@ -75,6 +78,15 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
     private val _pendingOpenQuizDialog = MutableStateFlow(false)
     val pendingOpenQuizDialog: StateFlow<Boolean> = _pendingOpenQuizDialog.asStateFlow()
 
+    private val _icebreaker = MutableStateFlow<IcebreakerData?>(null)
+    val icebreaker: StateFlow<IcebreakerData?> = _icebreaker.asStateFlow()
+
+    private val _icebreakerAnswered = MutableStateFlow(false)
+    val icebreakerAnswered: StateFlow<Boolean> = _icebreakerAnswered.asStateFlow()
+
+    private var icebreakerSlotOffset = 0
+    private var pendingIcebreakerAnswer: Pair<Long, String>? = null
+
     private val _allSubjectPools = MutableStateFlow<List<SubjectPool>>(emptyList())
     private val _groupMembersMap = MutableStateFlow<Map<Long, Set<Long>>>(emptyMap())
 
@@ -101,6 +113,14 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
             repo.observeTotalAnswers().collect {
                 refreshReadyUsersByGroup()
                 refreshSubjectPools()
+            }
+        }
+        viewModelScope.launch {
+            while (true) {
+                icebreakerSlotOffset = 0
+                _icebreakerAnswered.value = false
+                _icebreaker.value = repo.getDailyIcebreakerQuestion(slotOffset = 0)
+                delay(5 * 60 * 1000L)
             }
         }
         loadActiveUser()
@@ -215,10 +235,26 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
     }
 
     private fun transitionToUserSelected(user: User) {
+        pendingIcebreakerAnswer?.let { (questionId, answer) ->
+            viewModelScope.launch {
+                if (repo.getAnswerForUserQuestion(user.id, questionId) == null) {
+                    repo.saveSurveyAnswer(user.id, questionId, answer)
+                }
+            }
+            pendingIcebreakerAnswer = null
+        }
         answerCountJob?.cancel()
         readyUsersJob?.cancel()
         subjectPoolsJob?.cancel()
         quizzableUsersJob?.cancel()
+
+        if (user.preferredLanguage == null) {
+            viewModelScope.launch {
+                delay(400)
+                val state = _uiState.value as? HomeUiState.UserSelected ?: return@launch
+                _uiState.value = state.copy(showLanguagePrompt = true)
+            }
+        }
 
         val shouldPrompt = user.photoPath == null &&
                 !user.photoPromptOptOut &&
@@ -309,9 +345,43 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
         _uiState.value = state.copy(renameError = null)
     }
 
+    fun requestPhotoReplacement() {
+        val state = _uiState.value as? HomeUiState.UserSelected ?: return
+        _uiState.value = state.copy(showPhotoReplacement = true)
+    }
+
+    fun replacePhoto(context: android.content.Context, bitmap: android.graphics.Bitmap) {
+        val state = _uiState.value as? HomeUiState.UserSelected ?: return
+        viewModelScope.launch {
+            val path = com.gtky.app.util.PhotoStorage.saveAvatar(context, state.user.id, bitmap)
+            repo.setUserPhotoPath(state.user.id, path)
+            val updatedUser = repo.getUserById(state.user.id) ?: return@launch
+            _uiState.value = state.copy(user = updatedUser, showPhotoReplacement = false)
+        }
+    }
+
+    fun cancelPhotoReplacement() {
+        val state = _uiState.value as? HomeUiState.UserSelected ?: return
+        _uiState.value = state.copy(showPhotoReplacement = false)
+    }
+
     fun dismissPhotoPrompt() {
         val state = _uiState.value as? HomeUiState.UserSelected ?: return
         _uiState.value = state.copy(showPhotoPrompt = false)
+    }
+
+    fun setPreferredLanguage(lang: String) {
+        val state = _uiState.value as? HomeUiState.UserSelected ?: return
+        viewModelScope.launch {
+            repo.setUserPreferredLanguage(state.user.id, lang)
+            val updatedUser = repo.getUserById(state.user.id) ?: return@launch
+            _uiState.value = state.copy(user = updatedUser, showLanguagePrompt = false)
+        }
+    }
+
+    fun dismissLanguagePrompt() {
+        val state = _uiState.value as? HomeUiState.UserSelected ?: return
+        _uiState.value = state.copy(showLanguagePrompt = false)
     }
 
     fun savePhoto(context: android.content.Context, bitmap: android.graphics.Bitmap) {
@@ -333,6 +403,18 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
         }
     }
 
+    fun skipIcebreaker() {
+        icebreakerSlotOffset++
+        viewModelScope.launch {
+            _icebreaker.value = repo.getDailyIcebreakerQuestion(slotOffset = icebreakerSlotOffset)
+        }
+    }
+
+    fun recordIcebreakerAnswer(questionId: Long, answer: String) {
+        pendingIcebreakerAnswer = Pair(questionId, answer)
+        _icebreakerAnswered.value = true
+    }
+
     fun signOut() {
         viewModelScope.launch {
             repo.clearActiveUser()
@@ -340,6 +422,8 @@ class HomeViewModel(private val repo: GTKYRepository) : ViewModel() {
             readyUsersJob?.cancel()
             subjectPoolsJob?.cancel()
             quizzableUsersJob?.cancel()
+            _icebreakerAnswered.value = false
+            pendingIcebreakerAnswer = null
             _uiState.value = HomeUiState.NoUser()
         }
     }

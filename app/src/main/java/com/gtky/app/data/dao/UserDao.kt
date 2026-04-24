@@ -33,6 +33,9 @@ interface UserDao {
     @Query("UPDATE users SET photoPromptOptOut = 1 WHERE id = :id")
     suspend fun setPhotoPromptOptOut(id: Long)
 
+    @Query("UPDATE users SET preferredLanguage = :lang WHERE id = :id")
+    suspend fun setPreferredLanguage(id: Long, lang: String)
+
     @Query("SELECT COUNT(*) FROM users")
     suspend fun getUserCount(): Int
 

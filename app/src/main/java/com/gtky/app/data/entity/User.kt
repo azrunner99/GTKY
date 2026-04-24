@@ -10,5 +10,6 @@ data class User(
     val createdAt: Long = System.currentTimeMillis(),
     val photoPath: String? = null,
     val photoPromptCount: Int = 0,
-    val photoPromptOptOut: Boolean = false
+    val photoPromptOptOut: Boolean = false,
+    val preferredLanguage: String? = null
 )
