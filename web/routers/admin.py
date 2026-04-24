@@ -1,3 +1,4 @@
+import json
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -94,6 +95,65 @@ async def change_pin(request: Request, new_pin: str = Form(...)):
         await db.close()
 
     return RedirectResponse("/admin", status_code=303)
+
+
+@router.get("/users/{uid:int}/answers", response_class=HTMLResponse)
+async def admin_user_answers(request: Request, uid: int):
+    if not is_admin(request):
+        return RedirectResponse("/admin")
+    lang = request.session.get("lang", "en")
+
+    db = await get_db()
+    try:
+        async with db.execute(
+            "SELECT id, name, photo_filename FROM users WHERE id=?", (uid,)
+        ) as cur:
+            user = await cur.fetchone()
+        if not user:
+            return RedirectResponse("/admin")
+
+        async with db.execute(
+            """
+            SELECT sq.template_en, sq.template_es, sq.category,
+                   sq.options_en, sq.options_es, sa.answer_en, sa.answered_at
+            FROM survey_answers sa
+            JOIN survey_questions sq ON sq.id = sa.question_id
+            WHERE sa.user_id = ?
+            ORDER BY sq.category, sq.id
+            """,
+            (uid,),
+        ) as cur:
+            rows = await cur.fetchall()
+
+        answers = []
+        for r in rows:
+            opts_en = json.loads(r["options_en"])
+            opts_es = json.loads(r["options_es"])
+            try:
+                idx = opts_en.index(r["answer_en"])
+                answer_display = opts_es[idx] if lang == "es" and idx < len(opts_es) else r["answer_en"]
+            except ValueError:
+                answer_display = r["answer_en"]
+
+            template = r["template_es"] if lang == "es" else r["template_en"]
+            question_text = template.replace("[NAME]", user["name"])
+            answers.append({
+                "question": question_text,
+                "answer": answer_display,
+                "category": r["category"],
+            })
+
+        return templates.TemplateResponse(
+            "admin/user_answers.html",
+            {
+                "request": request,
+                "lang": lang,
+                "user": dict(user),
+                "answers": answers,
+            },
+        )
+    finally:
+        await db.close()
 
 
 @router.post("/users/{uid:int}/delete")

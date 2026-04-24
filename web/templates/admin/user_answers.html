@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}GTKY – Admin – {{ user.name }}{% endblock %}
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+  <h2 style="margin:0;">{{ user.name }}</h2>
+  <a href="/admin">← Admin</a>
+</div>
+
+<p style="color:var(--pico-muted-color); font-size:0.85rem;">
+  {{ answers | length }}
+  {{ 'respuestas' if lang == 'es' else 'answers' }}
+  ·
+  {{ 'solo visible para el admin' if lang == 'es' else 'admin-only view' }}
+</p>
+
+{% if answers %}
+  {% set ns = namespace(current_cat='') %}
+  {% for a in answers %}
+    {% if a.category != ns.current_cat %}
+      {% set ns.current_cat = a.category %}
+      <h4 style="font-size:0.85rem; color:var(--pico-muted-color); text-transform:uppercase; letter-spacing:0.05em; margin:1rem 0 0.5rem;">{{ a.category }}</h4>
+    {% endif %}
+    <div style="display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid var(--pico-muted-border-color); gap:1rem;">
+      <span style="font-size:0.9rem; color:var(--pico-muted-color); flex:1;">{{ a.question }}</span>
+      <span style="font-weight:600; font-size:0.9rem; color:var(--pico-primary); white-space:nowrap;">{{ a.answer }}</span>
+    </div>
+  {% endfor %}
+{% else %}
+  <p style="color:var(--pico-muted-color); text-align:center;">
+    {{ 'Este usuario no ha respondido preguntas.' if lang == 'es' else 'This user has no answers yet.' }}
+  </p>
+{% endif %}
+{% endblock %}

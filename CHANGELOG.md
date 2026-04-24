@@ -2,6 +2,8 @@
 
 ## Web UX Fix Pack
 
+- **W1.4 — Admin per-user answer view** — Added `GET /admin/users/{uid}/answers` route to `admin.py` that renders the full (question, answer) list for any user, grouped by category. New `admin/user_answers.html` template shows answer count, "admin-only view" label, and the grouped list. Added an "Answers" link in each user row in `admin.html`, placed before the photo-delete and delete-user actions. Route is auth-gated: non-admin requests are redirected to `/admin`. This is now the only place in the web app where anyone can view a user's full answer list.
+
 - **W1.3 — About page FAQ rewritten** — Rewrote `about/about.html` to match the Android Fix 31b content structure: four sections (What is GTKY? / Who's it for? / How it works / Tips & FAQ) with five collapsible FAQ entries. The "Are my answers private?" entry — which previously read "No. Anyone in the group can view your profile answers" — is replaced with the correct privacy model: no one sees your full answer list; other players only learn answers one at a time through quizzes; only the admin can see the full list. All copy is bilingual EN/ES.
 
 - **W1.2 — Profile page no longer reveals answers** — Rewrote `profile.py` GET handler and `profile/profile.html` entirely. Profile page now shows: large avatar, name, total survey-answer count, and two quiz score cards ("How well you know X" / "How well X knows you") for other users' profiles. Score cards show "N / M — P%" when quiz data exists, or an invite prompt when empty. Own profile shows avatar + answer count + photo upload form only; no score cards against yourself. No answer, question text, or category is exposed anywhere on the page.
