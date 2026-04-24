@@ -24,6 +24,7 @@ object Routes {
     const val GROUPS = "groups"
     const val ADMIN = "admin"
     const val PROFILE = "profile/{userId}"
+    const val ABOUT = "about"
 
     fun survey(userId: Long) = "survey/$userId"
     fun quiz(userId: Long, groupIds: String, subjectIds: String = "") =
@@ -49,7 +50,8 @@ fun GTKYNavGraph(navController: NavHostController) {
                 onGoToConnections = { navController.navigate(Routes.CONNECTIONS) },
                 onGoToActiveUsers = { navController.navigate(Routes.ACTIVE_USERS) },
                 onGoToGroups = { navController.navigate(Routes.GROUPS) },
-                onPickUser = { navController.navigate(Routes.PICK_USER) }
+                onPickUser = { navController.navigate(Routes.PICK_USER) },
+                onAboutTap = { navController.navigate(Routes.ABOUT) { launchSingleTop = true } }
             )
         }
 
@@ -179,6 +181,10 @@ fun GTKYNavGraph(navController: NavHostController) {
         composable(Routes.ADMIN) {
             val vm: AdminViewModel = viewModel(factory = AdminViewModel.Factory(repo))
             AdminScreen(viewModel = vm, onBack = { navController.popBackStack() })
+        }
+
+        composable(Routes.ABOUT) {
+            AboutScreen(onBack = { navController.popBackStack() })
         }
     }
 }

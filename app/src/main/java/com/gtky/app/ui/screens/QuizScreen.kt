@@ -246,7 +246,7 @@ private fun QuizQuestionContent(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Avatar(user = subjectUser, size = 96.dp)
+            Avatar(user = subjectUser, size = 160.dp)
             Text(
                 text = subjectName,
                 fontSize = 22.sp,
