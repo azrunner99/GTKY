@@ -1,4 +1,3 @@
-import json
 import io
 from fastapi import APIRouter, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -27,35 +26,33 @@ async def profile(request: Request, user_id: int):
             return RedirectResponse("/users")
 
         async with db.execute(
-            """
-            SELECT sq.template_en, sq.template_es, sq.category,
-                   sq.options_en, sq.options_es, sa.answer_en
-            FROM survey_answers sa
-            JOIN survey_questions sq ON sq.id = sa.question_id
-            WHERE sa.user_id = ?
-            ORDER BY sq.category, sq.id
-            """,
-            (user_id,),
+            "SELECT COUNT(*) AS cnt FROM survey_answers WHERE user_id=?", (user_id,)
         ) as cur:
-            rows = await cur.fetchall()
+            answer_count = (await cur.fetchone())["cnt"]
 
-        answers = []
-        for r in rows:
-            opts_en = json.loads(r["options_en"])
-            opts_es = json.loads(r["options_es"])
-            try:
-                idx = opts_en.index(r["answer_en"])
-                answer_display = opts_es[idx] if lang == "es" and idx < len(opts_es) else r["answer_en"]
-            except ValueError:
-                answer_display = r["answer_en"]
+        async with db.execute(
+            """
+            SELECT COUNT(*) AS total, COALESCE(SUM(is_correct), 0) AS correct
+            FROM quiz_results
+            WHERE guesser_id=? AND subject_id=?
+            """,
+            (viewer_id, user_id),
+        ) as cur:
+            row = await cur.fetchone()
+            you_total = row["total"]
+            you_correct = row["correct"]
 
-            template = r["template_es"] if lang == "es" else r["template_en"]
-            question_text = template.replace("[NAME]", subject["name"])
-            answers.append({
-                "question": question_text,
-                "answer": answer_display,
-                "category": r["category"],
-            })
+        async with db.execute(
+            """
+            SELECT COUNT(*) AS total, COALESCE(SUM(is_correct), 0) AS correct
+            FROM quiz_results
+            WHERE guesser_id=? AND subject_id=?
+            """,
+            (user_id, viewer_id),
+        ) as cur:
+            row = await cur.fetchone()
+            them_total = row["total"]
+            them_correct = row["correct"]
 
         is_own = viewer_id == user_id
 
@@ -65,7 +62,11 @@ async def profile(request: Request, user_id: int):
                 "request": request,
                 "lang": lang,
                 "subject": dict(subject),
-                "answers": answers,
+                "answer_count": answer_count,
+                "you_correct": you_correct,
+                "you_total": you_total,
+                "them_correct": them_correct,
+                "them_total": them_total,
                 "is_own": is_own,
             },
         )

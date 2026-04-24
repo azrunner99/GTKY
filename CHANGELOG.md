@@ -2,6 +2,8 @@
 
 ## Web UX Fix Pack
 
+- **W1.2 — Profile page no longer reveals answers** — Rewrote `profile.py` GET handler and `profile/profile.html` entirely. Profile page now shows: large avatar, name, total survey-answer count, and two quiz score cards ("How well you know X" / "How well X knows you") for other users' profiles. Score cards show "N / M — P%" when quiz data exists, or an invite prompt when empty. Own profile shows avatar + answer count + photo upload form only; no score cards against yourself. No answer, question text, or category is exposed anywhere on the page.
+
 - **W1.1 — Icebreaker card removed** — Deleted `get_icebreaker()` from `web/routers/home.py`. Pre-login landing page now shows no user data at all. Dashboard replaces the icebreaker card with a single anonymous activity line ("N people have answered M questions so far"), shown only when more than one user has answered; suppressed entirely for solo sessions. No names, questions, or answers are exposed to unauthenticated visitors.
 
 ## UX Fix Pack

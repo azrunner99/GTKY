@@ -3,41 +3,88 @@
 {% block content %}
 <div style="text-align:center; margin-bottom:1.5rem;">
   {% if subject.photo_filename %}
-    <div class="avatar avatar-lg" style="margin:0 auto 0.75rem;"><img src="/static/photos/{{ subject.photo_filename }}" alt="{{ subject.name }}"></div>
+    <div class="avatar avatar-lg" style="margin:0 auto 0.75rem;">
+      <img src="/static/photos/{{ subject.photo_filename }}" alt="{{ subject.name }}">
+    </div>
   {% else %}
-    <div class="avatar avatar-lg" style="margin:0 auto 0.75rem; background:var(--pico-primary-background);">{{ subject.name[0].upper() }}</div>
+    <div class="avatar avatar-lg" style="margin:0 auto 0.75rem; background:var(--pico-primary-background);">
+      {{ subject.name[0].upper() }}
+    </div>
   {% endif %}
   <h2 style="margin:0;">{{ subject.name }}</h2>
+  <p style="color:var(--pico-muted-color); font-size:0.9rem; margin:0.25rem 0 0;">
+    {% if lang == 'es' %}
+      {{ subject.name }} ha respondido {{ answer_count }} pregunta{% if answer_count != 1 %}s{% endif %}
+    {% else %}
+      {{ subject.name }} has answered {{ answer_count }} survey question{% if answer_count != 1 %}s{% endif %}
+    {% endif %}
+  </p>
 
   {% if is_own %}
   <div style="margin-top:1rem;">
-    <form method="post" action="/profile/photo" enctype="multipart/form-data" style="display:inline-flex; gap:0.5rem; align-items:center;">
-      <input type="file" name="photo" accept="image/*" style="font-size:0.8rem; max-width:180px;">
-      <button type="submit" class="outline" style="padding:0.3rem 0.8rem; font-size:0.8rem;">{{ 'Subir foto' if lang == 'es' else 'Upload photo' }}</button>
+    <form method="post" action="/profile/photo" enctype="multipart/form-data"
+          style="display:inline-flex; gap:0.5rem; align-items:center;">
+      <input type="file" name="photo" accept="image/*" capture="user"
+             style="font-size:0.8rem; max-width:200px;">
+      <button type="submit" class="outline" style="padding:0.3rem 0.8rem; font-size:0.8rem;">
+        {{ 'Subir foto' if lang == 'es' else 'Upload photo' }}
+      </button>
     </form>
     {% if subject.photo_filename %}
     <form method="post" action="/profile/photo/delete" style="display:inline; margin-left:0.5rem;">
-      <button type="submit" class="outline secondary" style="padding:0.3rem 0.8rem; font-size:0.8rem;">{{ 'Quitar foto' if lang == 'es' else 'Remove photo' }}</button>
+      <button type="submit" class="outline secondary" style="padding:0.3rem 0.8rem; font-size:0.8rem;">
+        {{ 'Quitar foto' if lang == 'es' else 'Remove photo' }}
+      </button>
     </form>
     {% endif %}
   </div>
   {% endif %}
 </div>
 
-{% if answers %}
-  {% set ns = namespace(current_cat='') %}
-  {% for a in answers %}
-    {% if a.category != ns.current_cat %}
-      {% set ns.current_cat = a.category %}
-      <h4 style="font-size:0.85rem; color:var(--pico-muted-color); text-transform:uppercase; letter-spacing:0.05em; margin:1rem 0 0.5rem;">{{ a.category }}</h4>
+{% if not is_own %}
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1.5rem;">
+  <article style="text-align:center; padding:1rem;">
+    <p style="font-size:0.8rem; color:var(--pico-muted-color); margin:0 0 0.5rem;">
+      {{ 'Qué tanto conoces a ' + subject.name if lang == 'es' else 'How well you know ' + subject.name }}
+    </p>
+    {% if you_total == 0 %}
+      <p style="font-size:0.85rem; margin:0;">
+        {{ 'Toma un quiz sobre ' + subject.name + ' para saber.' if lang == 'es'
+           else 'Take a quiz about ' + subject.name + ' to find out.' }}
+      </p>
+    {% else %}
+      <p style="font-size:1.5rem; font-weight:700; margin:0;">
+        {{ you_correct }} / {{ you_total }}
+      </p>
+      <p style="font-size:0.8rem; color:var(--pico-muted-color); margin:0;">
+        {{ (100 * you_correct // you_total) }}%
+      </p>
     {% endif %}
-    <div style="display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid var(--pico-muted-border-color);">
-      <span style="font-size:0.9rem; color:var(--pico-muted-color); flex:1; padding-right:1rem;">{{ a.question }}</span>
-      <span style="font-weight:600; font-size:0.9rem; color:var(--pico-primary); white-space:nowrap;">{{ a.answer }}</span>
-    </div>
-  {% endfor %}
-{% else %}
-  <p style="color:var(--pico-muted-color); text-align:center;">{{ 'Todavía no hay respuestas.' if lang == 'es' else 'No answers yet.' }}</p>
+  </article>
+  <article style="text-align:center; padding:1rem;">
+    <p style="font-size:0.8rem; color:var(--pico-muted-color); margin:0 0 0.5rem;">
+      {{ 'Qué tanto te conoce ' + subject.name if lang == 'es'
+         else 'How well ' + subject.name + ' knows you' }}
+    </p>
+    {% if them_total == 0 %}
+      <p style="font-size:0.85rem; margin:0;">
+        {{ subject.name + ' aún no te ha hecho un quiz.' if lang == 'es'
+           else subject.name + " hasn't quizzed about you yet." }}
+      </p>
+    {% else %}
+      <p style="font-size:1.5rem; font-weight:700; margin:0;">
+        {{ them_correct }} / {{ them_total }}
+      </p>
+      <p style="font-size:0.8rem; color:var(--pico-muted-color); margin:0;">
+        {{ (100 * them_correct // them_total) }}%
+      </p>
+    {% endif %}
+  </article>
+</div>
+<p style="text-align:center; color:var(--pico-muted-color); font-size:0.85rem;">
+  {{ '¿Quieres saber más sobre ' + subject.name + '? Toma un quiz.' if lang == 'es'
+     else 'Want to learn more about ' + subject.name + '? Take a quiz.' }}
+</p>
 {% endif %}
 
 <div style="margin-top:1.5rem; display:flex; gap:1rem;">
@@ -45,7 +92,9 @@
   {% if not is_own %}
   <form method="post" action="/quiz/start">
     <input type="hidden" name="subject_id" value="{{ subject.id }}">
-    <button type="submit" class="outline" style="padding:0.3rem 0.9rem; font-size:0.85rem;">Quiz {{ subject.name }}</button>
+    <button type="submit" class="outline" style="padding:0.3rem 0.9rem; font-size:0.85rem;">
+      Quiz {{ subject.name }}
+    </button>
   </form>
   {% endif %}
 </div>
