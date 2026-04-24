@@ -1,5 +1,9 @@
 # Changelog
 
+## Web UX Fix Pack
+
+- **W1.1 — Icebreaker card removed** — Deleted `get_icebreaker()` from `web/routers/home.py`. Pre-login landing page now shows no user data at all. Dashboard replaces the icebreaker card with a single anonymous activity line ("N people have answered M questions so far"), shown only when more than one user has answered; suppressed entirely for solo sessions. No names, questions, or answers are exposed to unauthenticated visitors.
+
 ## UX Fix Pack
 
 - **Fix 31a — Public profile (no answer reveal)** — `ProfileScreen` no longer displays a user's full answer list. Replaced with a public stats card: large avatar (160dp), name, total survey-answer count, and two score cards showing bidirectional quiz knowledge ("how well you know them" / "how well they know you"). Empty-state copy in each card invites the viewer to take a quiz. The 8-answer profile-view gate is removed from `ConnectionsScreen` — with nothing private on the profile, users with zero answers can now tap any Connections row and land directly on the stats card. Admin-side `UserDetailScreen` is unchanged. Dropped the now-unused Spanish answer-translation logic (`translateAnswer`, `parseOptions`, `kotlinx.serialization` imports) from `ProfileViewModel`; dropped the `language` constructor parameter entirely.

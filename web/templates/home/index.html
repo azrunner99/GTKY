@@ -9,15 +9,6 @@
   </a>
 </div>
 
-{% if icebreaker %}
-<div class="icebreaker-card">
-  <span class="category-badge">{{ icebreaker.category }}</span>
-  <p style="font-size:0.9rem; color:var(--pico-muted-color); margin:0 0 0.25rem;">{{ icebreaker.user_name }}</p>
-  <p style="font-weight:600; margin:0 0 0.5rem;">{{ icebreaker.question }}</p>
-  <p style="color:var(--pico-primary); font-weight:700; margin:0;">{{ icebreaker.answer }}</p>
-</div>
-{% endif %}
-
 <article>
   <h2 style="text-align:center;">{{ '¿Quién eres tú?' if lang == 'es' else 'Who are you?' }}</h2>
   {% if error %}<p style="color:var(--pico-del-color);">{{ error }}</p>{% endif %}
