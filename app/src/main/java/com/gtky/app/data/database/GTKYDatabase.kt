@@ -17,7 +17,7 @@ import com.gtky.app.data.entity.*
         QuizResult::class,
         AppConfig::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -47,6 +47,12 @@ abstract class GTKYDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE users ADD COLUMN preferredLanguage TEXT")
+            }
+        }
+
         fun getInstance(context: Context): GTKYDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -54,7 +60,7 @@ abstract class GTKYDatabase : RoomDatabase() {
                     GTKYDatabase::class.java,
                     "gtky_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build().also { instance = it }
             }
     }

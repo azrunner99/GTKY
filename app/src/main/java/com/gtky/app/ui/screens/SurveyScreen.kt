@@ -35,10 +35,8 @@ fun SurveyScreen(
             TopAppBar(
                 title = { Text(t("About You", "Sobre Ti")) },
                 navigationIcon = {
-                    if (state.canQuit) {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = t("Back", "Atrás"))
-                        }
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = t("Back", "Atrás"))
                     }
                 },
                 actions = {

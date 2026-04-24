@@ -21,7 +21,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -200,51 +202,62 @@ private fun PinEntryScreen(
 ) {
     var pin by remember { mutableStateOf("") }
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(t("Admin Access", "Acceso Admin"), fontSize = 28.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
-        Text(t("Enter your PIN", "Ingresa tu PIN"), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
-        if (isPinDefault) {
-            Spacer(Modifier.height(8.dp))
-            Text(
-                t("First time? Default PIN is 1234. You'll be asked to change it.",
-                  "¿Primera vez? El PIN predeterminado es 1234. Se te pedirá cambiarlo."),
-                fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {},
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, t("Back", "Atrás"))
+                    }
+                },
+                actions = { LanguageToggle() }
             )
         }
-        Spacer(Modifier.height(32.dp))
-
-        OutlinedTextField(
-            value = pin,
-            onValueChange = { if (it.length <= 8) pin = it.filter { c -> c.isDigit() } },
-            label = { Text("PIN") }, // PIN is universal
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        if (error != null) {
-            Text(error, color = MaterialTheme.colorScheme.error, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        Button(
-            onClick = { onSubmit(pin) },
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            enabled = pin.isNotBlank()
+    ) { padding ->
+        Column(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Text(t("Enter", "Entrar"))
-        }
+            Text(t("Admin Access", "Acceso Admin"), fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Text(t("Enter your PIN", "Ingresa tu PIN"), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+            if (isPinDefault) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    t("First time? Default PIN is 1234. You'll be asked to change it.",
+                      "¿Primera vez? El PIN predeterminado es 1234. Se te pedirá cambiarlo."),
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f)
+                )
+            }
+            Spacer(Modifier.height(32.dp))
 
-        Spacer(Modifier.height(12.dp))
-        TextButton(onClick = onBack) { Text(t("Back", "Atrás")) }
+            OutlinedTextField(
+                value = pin,
+                onValueChange = { if (it.length <= 8) pin = it.filter { c -> c.isDigit() } },
+                label = { Text("PIN") },
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            if (error != null) {
+                Text(error, color = MaterialTheme.colorScheme.error, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            Button(
+                onClick = { onSubmit(pin) },
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                enabled = pin.isNotBlank()
+            ) {
+                Text(t("Enter", "Entrar"))
+            }
+        }
     }
 }
 
@@ -311,7 +324,9 @@ private fun UserDetailScreen(
 ) {
     var confirmDelete by remember { mutableStateOf(false) }
     var pendingRemovePath by remember { mutableStateOf<String?>(null) }
+    var enlargedPhotoPath by remember { mutableStateOf<String?>(null) }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -325,6 +340,7 @@ private fun UserDetailScreen(
                     IconButton(onClick = { confirmDelete = true }) {
                         Icon(Icons.Default.Delete, t("Delete user", "Eliminar usuario"), tint = MaterialTheme.colorScheme.error)
                     }
+                    LanguageToggle()
                 }
             )
         }
@@ -337,7 +353,13 @@ private fun UserDetailScreen(
                         .padding(vertical = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Avatar(user = user, size = 96.dp)
+                    Avatar(
+                        user = user,
+                        size = 96.dp,
+                        modifier = if (user.photoPath != null)
+                            Modifier.clickable { enlargedPhotoPath = user.photoPath }
+                        else Modifier
+                    )
                     Spacer(Modifier.height(12.dp))
                     Text(user.name, fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
                 }
@@ -359,7 +381,8 @@ private fun UserDetailScreen(
                             PhotoHistoryThumb(
                                 path = path,
                                 isCurrent = path == user.photoPath,
-                                onRemove = { pendingRemovePath = path }
+                                onRemove = { pendingRemovePath = path },
+                                onEnlarge = { enlargedPhotoPath = path }
                             )
                         }
                     }
@@ -396,6 +419,27 @@ private fun UserDetailScreen(
             }
         }
     }
+
+    enlargedPhotoPath?.let { path ->
+        val bitmap = remember(path) { PhotoStorage.loadAvatar(path) }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xE6000000))
+                .clickable { enlargedPhotoPath = null },
+            contentAlignment = Alignment.Center
+        ) {
+            if (bitmap != null) {
+                androidx.compose.foundation.Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+    }
+    } // end wrapping Box
 
     pendingRemovePath?.let { path ->
         AlertDialog(
@@ -529,7 +573,8 @@ private fun ChangePinDialog(
 private fun PhotoHistoryThumb(
     path: String,
     isCurrent: Boolean,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    onEnlarge: () -> Unit
 ) {
     val bitmap = remember(path) { PhotoStorage.loadAvatar(path) }
     Box(modifier = Modifier.size(80.dp)) {
@@ -537,12 +582,14 @@ private fun PhotoHistoryThumb(
             androidx.compose.foundation.Image(
                 bitmap = bitmap.asImageBitmap(),
                 contentDescription = null,
-                modifier = Modifier.size(80.dp).clip(CircleShape)
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.size(80.dp).clip(CircleShape).clickable(onClick = onEnlarge)
             )
         } else {
             Box(
                 modifier = Modifier.size(80.dp).clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable(onClick = onEnlarge),
                 contentAlignment = Alignment.Center
             ) {
                 Text("?", fontSize = 24.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)

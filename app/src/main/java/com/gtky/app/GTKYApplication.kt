@@ -42,6 +42,18 @@ class GTKYApplication : Application() {
             val new = if (_language.value == "en") "es" else "en"
             repository.setLanguage(new)
             _language.value = new
+            val activeUserId = repository.getActiveUserId()
+            if (activeUserId != null) {
+                repository.setUserPreferredLanguage(activeUserId, new)
+            }
         }
+    }
+
+    fun setSessionLanguage(lang: String) {
+        _language.value = lang
+    }
+
+    fun restoreLanguage() {
+        appScope.launch { _language.value = repository.getLanguage() }
     }
 }

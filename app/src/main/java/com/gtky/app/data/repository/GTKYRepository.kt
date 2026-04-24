@@ -4,6 +4,7 @@ import com.gtky.app.Constants
 import com.gtky.app.data.dao.ConnectionScore
 import com.gtky.app.data.database.GTKYDatabase
 import com.gtky.app.data.entity.*
+import com.gtky.app.util.forSurvey
 import com.gtky.app.util.normalizeName
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -82,6 +83,14 @@ data class ConnectionEntry(
     val scoreAtoB: Double,
     val scoreBtoA: Double,
     val mutualScore: Double
+)
+
+data class IcebreakerData(
+    val questionId: Long,
+    val enText: String,
+    val esText: String,
+    val enOptions: List<String>,
+    val esOptions: List<String>
 )
 
 enum class MatchKind {
@@ -176,6 +185,9 @@ class GTKYRepository(val db: GTKYDatabase) {
     suspend fun markPhotoPromptOptOut(userId: Long) =
         db.userDao().setPhotoPromptOptOut(userId)
 
+    suspend fun setUserPreferredLanguage(userId: Long, lang: String) =
+        db.userDao().setPreferredLanguage(userId, lang)
+
     suspend fun removeUserPhoto(userId: Long, photoPath: String) {
         try { java.io.File(photoPath).delete() } catch (_: Exception) { }
         val user = db.userDao().getUserById(userId) ?: return
@@ -210,11 +222,34 @@ class GTKYRepository(val db: GTKYDatabase) {
         db.userDao().getUsersInGroup(groupId)
 
     // Survey
+    suspend fun getDailyIcebreakerQuestion(slotOffset: Int = 0): IcebreakerData? {
+        val questions = db.surveyQuestionDao().getAllQuestionsOnce()
+            .filter { parseOptions(it.optionsJson).isNotEmpty() }
+        if (questions.isEmpty()) return null
+        val cal = java.util.Calendar.getInstance()
+        val dayOfYear = cal.get(java.util.Calendar.DAY_OF_YEAR)
+        val fiveMinSlot = (cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 + cal.get(java.util.Calendar.MINUTE)) / 5
+        val q = questions[(dayOfYear * 288 + fiveMinSlot + slotOffset) % questions.size]
+        val enOpts = parseOptions(q.optionsJson)
+        val esOpts = parseOptions(q.optionsJsonEs).takeIf { it.size == enOpts.size } ?: enOpts
+        val esTemplate = q.questionTemplateEs.takeIf { it.isNotEmpty() } ?: q.questionTemplate
+        return IcebreakerData(
+            questionId = q.id,
+            enText = forSurvey(q.questionTemplate, "en"),
+            esText = forSurvey(esTemplate, "es"),
+            enOptions = enOpts,
+            esOptions = esOpts
+        )
+    }
+
     suspend fun getUnansweredSurveyQuestions(userId: Long) =
         db.surveyQuestionDao().getUnansweredQuestionsForUser(userId)
 
     fun getAnswerCountForUser(userId: Long): Flow<Int> =
         db.surveyAnswerDao().getAnswerCountForUser(userId)
+
+    suspend fun getAnswerForUserQuestion(userId: Long, questionId: Long): String? =
+        db.surveyAnswerDao().getAnswerForUserQuestion(userId, questionId)
 
     suspend fun saveSurveyAnswer(userId: Long, questionId: Long, answer: String) {
         db.surveyAnswerDao().insertAnswer(SurveyAnswer(userId = userId, questionId = questionId, answer = answer))
