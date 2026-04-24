@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+gtky.db
+static/photos/*.jpg
+static/photos/*.jpeg
+static/photos/*.png
+static/photos/*.webp
