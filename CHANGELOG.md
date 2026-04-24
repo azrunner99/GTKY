@@ -2,6 +2,8 @@
 
 ## Web UX Fix Pack
 
+- **W1.3 — About page FAQ rewritten** — Rewrote `about/about.html` to match the Android Fix 31b content structure: four sections (What is GTKY? / Who's it for? / How it works / Tips & FAQ) with five collapsible FAQ entries. The "Are my answers private?" entry — which previously read "No. Anyone in the group can view your profile answers" — is replaced with the correct privacy model: no one sees your full answer list; other players only learn answers one at a time through quizzes; only the admin can see the full list. All copy is bilingual EN/ES.
+
 - **W1.2 — Profile page no longer reveals answers** — Rewrote `profile.py` GET handler and `profile/profile.html` entirely. Profile page now shows: large avatar, name, total survey-answer count, and two quiz score cards ("How well you know X" / "How well X knows you") for other users' profiles. Score cards show "N / M — P%" when quiz data exists, or an invite prompt when empty. Own profile shows avatar + answer count + photo upload form only; no score cards against yourself. No answer, question text, or category is exposed anywhere on the page.
 
 - **W1.1 — Icebreaker card removed** — Deleted `get_icebreaker()` from `web/routers/home.py`. Pre-login landing page now shows no user data at all. Dashboard replaces the icebreaker card with a single anonymous activity line ("N people have answered M questions so far"), shown only when more than one user has answered; suppressed entirely for solo sessions. No names, questions, or answers are exposed to unauthenticated visitors.

@@ -2,53 +2,144 @@
 {% block title %}GTKY – About{% endblock %}
 {% block content %}
 <div style="text-align:center; margin-bottom:2rem;">
-  <div style="font-size:3rem; font-weight:900; color:var(--pico-primary);">GTKY</div>
-  <div style="font-size:1.1rem; color:var(--pico-secondary);">Get To Know Ya</div>
+  <div style="font-size:3rem; font-weight:900; color:var(--pico-primary); line-height:1;">GTKY</div>
+  <div style="font-size:1.1rem; color:var(--pico-secondary);">
+    {{ 'Get To Know Ya' if lang != 'es' else 'Conócete' }}
+  </div>
 </div>
 
 <article>
-  <h3>{{ '¿Qué es GTKY?' if lang == 'es' else 'What is GTKY?' }}</h3>
+  <h3>👋 {{ '¿Qué es GTKY?' if lang == 'es' else 'What is GTKY?' }}</h3>
   <p>
     {% if lang == 'es' %}
-    GTKY es una aplicación de rompehielos para grupos. Responde preguntas sobre ti mismo, luego pon a prueba qué tan bien conoces a los demás — y descubre qué tan bien ellos te conocen a ti.
+    GTKY (Get To Know Ya, "conócete") es un juego para que un grupo se conozca. Cada quien
+    responde preguntas sobre sí mismo, y después se hacen quizzes para ver qué tanto se conocen.
+    Es la parte del rompehielos que normalmente no pasa — convertida en algo que sí te dan ganas de hacer.
     {% else %}
-    GTKY is an icebreaker app for groups. Answer questions about yourself, then test how well you know the others — and see how well they know you.
+    GTKY (Get To Know Ya) is a get-to-know-you game for groups. Everyone answers a bunch of
+    questions about themselves, then quizzes each other to see how well they actually know the
+    people in the room. It's the part of the icebreaker that usually doesn't happen — turned
+    into something you might actually want to do.
     {% endif %}
   </p>
 </article>
 
 <article>
-  <h3>{{ '¿Cómo funciona?' if lang == 'es' else 'How it works' }}</h3>
+  <h3>👥 {{ '¿Para quién es?' if lang == 'es' else "Who's it for?" }}</h3>
+  <p>
+    {% if lang == 'es' %}
+    Grupos de 5 a 50 personas que van a pasar tiempo juntas — retiros de equipo, salones de
+    clase, reuniones familiares, onboarding. Comparte la URL con todos los que estén en la
+    misma WiFi y cada quien puede entrar desde su propio celular.
+    {% else %}
+    Groups of 5 to 50 people who'll be spending time together — team offsites, classrooms,
+    family reunions, onboarding. Share the URL with everyone on the same WiFi and each person
+    can join from their own phone.
+    {% endif %}
+  </p>
+</article>
+
+<article>
+  <h3>▶️ {{ 'Cómo funciona' if lang == 'es' else 'How it works' }}</h3>
   <ol>
-    <li>{{ 'Entra con tu nombre.' if lang == 'es' else 'Sign in with your name.' }}</li>
-    <li>{{ 'Responde preguntas de encuesta sobre ti.' if lang == 'es' else 'Answer survey questions about yourself.' }}</li>
-    <li>{{ 'Desbloquea el quiz después de 10 respuestas.' if lang == 'es' else 'Unlock the quiz after 10 answers.' }}</li>
-    <li>{{ 'Pon a prueba qué tan bien conoces a los demás.' if lang == 'es' else 'Test how well you know your group.' }}</li>
-    <li>{{ 'Mira tus conexiones — quién te conoce mejor.' if lang == 'es' else 'See your connections — who knows you best.' }}</li>
+    <li>
+      {% if lang == 'es' %}
+      Entra con tu nombre. Si ya usaste GTKY antes, toca "Ya estoy aquí".
+      {% else %}
+      Sign in with your name. If you've used GTKY before, tap "I'm already here" instead.
+      {% endif %}
+    </li>
+    <li>
+      {% if lang == 'es' %}
+      Responde preguntas sobre ti — preferencias, opiniones, qué prefieres.
+      {% else %}
+      Answer survey questions about yourself — preferences, opinions, would-you-rathers.
+      {% endif %}
+    </li>
+    <li>
+      {% if lang == 'es' %}
+      Cuando hayas respondido unas ocho, puedes empezar los quizzes.
+      {% else %}
+      Once you've answered eight or so, you can take quizzes.
+      {% endif %}
+    </li>
+    <li>
+      {% if lang == 'es' %}
+      Revisa Conexiones para ver qué tanto conoces a cada quien.
+      {% else %}
+      Check Connections to see how well you know each person.
+      {% endif %}
+    </li>
+    <li>
+      {% if lang == 'es' %}
+      Toca cualquier cara para ver qué tanto conoces a esa persona y qué tanto te conoce.
+      {% else %}
+      Tap any face to see how well you know that person and how well they know you.
+      {% endif %}
+    </li>
   </ol>
 </article>
 
 <article>
-  <h3>{{ 'Preguntas frecuentes' if lang == 'es' else 'FAQ' }}</h3>
+  <h3>💡 {{ 'Tips y preguntas' if lang == 'es' else 'Tips & FAQ' }}</h3>
 
   <details>
-    <summary>{{ '¿Mis respuestas son privadas?' if lang == 'es' else 'Are my answers private?' }}</summary>
-    <p>{{ 'No. Cualquier persona del grupo puede ver tu perfil.' if lang == 'es' else 'No. Anyone in the group can view your profile answers.' }}</p>
+    <summary><strong>{{ '¿Quién ve mis respuestas?' if lang == 'es' else 'Who sees my answers?' }}</strong></summary>
+    <p>
+      {% if lang == 'es' %}
+      Nadie ve tu lista completa de respuestas — ni siquiera tú, después de responderlas.
+      Los demás solo se enteran de tus respuestas una por una, tomando quizzes sobre ti.
+      Solo el admin puede ver la lista completa de respuestas de alguien.
+      {% else %}
+      No one sees your full list of answers — not even you, after you submit them. Other players
+      only learn your answers one at a time, by taking quizzes about you. Only the admin can
+      see anyone's full answer list.
+      {% endif %}
+    </p>
   </details>
 
   <details>
-    <summary>{{ '¿Puedo cambiar mis respuestas?' if lang == 'es' else 'Can I change my answers?' }}</summary>
-    <p>{{ 'Por ahora, las respuestas son permanentes. Pide al admin que reinicie tu cuenta si es necesario.' if lang == 'es' else 'Currently answers are permanent. Ask an admin to reset your account if needed.' }}</p>
+    <summary><strong>{{ '¿Quién ve mi foto?' if lang == 'es' else 'Who sees my photo?' }}</strong></summary>
+    <p>
+      {% if lang == 'es' %}
+      Solo las otras personas en este mismo servidor. Las fotos se guardan localmente y no se suben a internet.
+      {% else %}
+      Only other people on this same server. Photos are stored locally and never uploaded anywhere else.
+      {% endif %}
+    </p>
   </details>
 
   <details>
-    <summary>{{ '¿Cómo funciona la puntuación del quiz?' if lang == 'es' else 'How does quiz scoring work?' }}</summary>
-    <p>{{ 'Cada respuesta correcta vale un punto. Las puntuaciones de conexión son el porcentaje de aciertos.' if lang == 'es' else 'Each correct answer is worth one point. Connection scores are your percentage correct.' }}</p>
+    <summary><strong>{{ '¿Puedo cambiar mis respuestas?' if lang == 'es' else 'Can I change my answers?' }}</strong></summary>
+    <p>
+      {% if lang == 'es' %}
+      Por ahora, las respuestas son permanentes. Pide al admin que reinicie tu cuenta si necesitas empezar de nuevo.
+      {% else %}
+      Currently answers are permanent. Ask an admin to reset your account if you need to start over.
+      {% endif %}
+    </p>
   </details>
 
   <details>
-    <summary>{{ '¿Quién es el admin?' if lang == 'es' else 'Who is the admin?' }}</summary>
-    <p>{{ 'El admin puede gestionar usuarios y cambiar el PIN. El PIN predeterminado es 1234 — cámbialo.' if lang == 'es' else 'The admin can manage users and change the PIN. The default PIN is 1234 — change it.' }}</p>
+    <summary><strong>{{ '¿Cómo funciona la puntuación del quiz?' if lang == 'es' else 'How does quiz scoring work?' }}</strong></summary>
+    <p>
+      {% if lang == 'es' %}
+      Cada respuesta correcta vale un punto. Las puntuaciones en Conexiones son el porcentaje de aciertos.
+      {% else %}
+      Each correct answer is worth one point. Connection scores are your percentage correct.
+      {% endif %}
+    </p>
+  </details>
+
+  <details>
+    <summary><strong>{{ '¿Quién es el admin?' if lang == 'es' else 'Who is the admin?' }}</strong></summary>
+    <p>
+      {% if lang == 'es' %}
+      Quien sepa el PIN. El PIN por defecto es 1234 — cámbialo en cuanto puedas.
+      {% else %}
+      Whoever knows the PIN. The default PIN is 1234 — change it as soon as you can.
+      {% endif %}
+    </p>
   </details>
 </article>
 
