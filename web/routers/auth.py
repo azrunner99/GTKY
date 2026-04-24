@@ -9,10 +9,28 @@ router = APIRouter()
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
+def _title_case_segment(seg: str) -> str:
+    if not seg:
+        return seg
+    return seg[0].upper() + seg[1:].lower()
+
+
 def normalize_name(name: str) -> str:
-    name = name.strip()
-    name = re.sub(r"\s+", " ", name)
-    return " ".join(w.capitalize() for w in name.split())
+    """
+    Strict title case. Matches Android util/NameFormat.kt:normalizeName.
+    "alex smith"    -> "Alex Smith"
+    "ALEX SMITH"    -> "Alex Smith"
+    "mary-jane LEE" -> "Mary-Jane Lee"
+    """
+    collapsed = re.sub(r"\s+", " ", name.strip())
+    if not collapsed:
+        return ""
+    words = collapsed.split(" ")
+    out = []
+    for word in words:
+        segments = word.split("-")
+        out.append("-".join(_title_case_segment(s) for s in segments))
+    return " ".join(out)
 
 
 @router.post("/signin", response_class=HTMLResponse)

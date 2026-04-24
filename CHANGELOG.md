@@ -2,6 +2,8 @@
 
 ## Web UX Fix Pack
 
+- **W1.5 — Name normalization matches Android exactly** — Rewrote `normalize_name` in `auth.py` to handle hyphenated names correctly. Python's `str.capitalize()` lowercases everything after the first character, breaking `"mary-jane"` → `"Mary-jane"`. New implementation splits each word on hyphens first, applies per-segment title case, then rejoins — matching Android `NameFormat.kt:normalizeName` exactly. `"mary-jane LEE"` → `"Mary-Jane Lee"`. Added `pytest` to `requirements.txt`; 11 unit tests in `web/tests/test_name_format.py` — all passing.
+
 - **W1.4 — Admin per-user answer view** — Added `GET /admin/users/{uid}/answers` route to `admin.py` that renders the full (question, answer) list for any user, grouped by category. New `admin/user_answers.html` template shows answer count, "admin-only view" label, and the grouped list. Added an "Answers" link in each user row in `admin.html`, placed before the photo-delete and delete-user actions. Route is auth-gated: non-admin requests are redirected to `/admin`. This is now the only place in the web app where anyone can view a user's full answer list.
 
 - **W1.3 — About page FAQ rewritten** — Rewrote `about/about.html` to match the Android Fix 31b content structure: four sections (What is GTKY? / Who's it for? / How it works / Tips & FAQ) with five collapsible FAQ entries. The "Are my answers private?" entry — which previously read "No. Anyone in the group can view your profile answers" — is replaced with the correct privacy model: no one sees your full answer list; other players only learn answers one at a time through quizzes; only the admin can see the full list. All copy is bilingual EN/ES.
