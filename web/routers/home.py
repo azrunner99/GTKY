@@ -26,9 +26,13 @@ async def home(request: Request):
     db = await get_db()
     try:
         if not user_id:
+            async with db.execute(
+                "SELECT id, name, photo_filename FROM users ORDER BY name"
+            ) as cur:
+                existing_users = [dict(r) for r in await cur.fetchall()]
             return templates.TemplateResponse(
                 "home/index.html",
-                {"request": request, "lang": lang},
+                {"request": request, "lang": lang, "existing_users": existing_users},
             )
 
         async with db.execute("SELECT name, photo_filename FROM users WHERE id=?", (user_id,)) as cur:

@@ -1,4 +1,5 @@
 import re
+from typing import Optional
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -34,33 +35,62 @@ def normalize_name(name: str) -> str:
 
 
 @router.post("/signin", response_class=HTMLResponse)
-async def signin(request: Request, name: str = Form(...)):
-    name = normalize_name(name)
-    if not name or len(name) < 2:
-        return templates.TemplateResponse(
-            "home/index.html",
-            {"request": request, "error": "Please enter your name (at least 2 characters)."},
-        )
-
+async def signin(
+    request: Request,
+    first_name: Optional[str] = Form(None),
+    last_name: Optional[str] = Form(None),
+    existing_user_id: Optional[int] = Form(None),
+    is_new: Optional[str] = Form(None),
+):
     db = await get_db()
     try:
-        async with db.execute("SELECT id FROM users WHERE name = ?", (name,)) as cur:
-            row = await cur.fetchone()
-        if row:
-            user_id = row["id"]
-        else:
-            async with db.execute(
-                "INSERT INTO users(name) VALUES(?)", (name,)
-            ) as cur:
-                user_id = cur.lastrowid
-            await db.commit()
+        if existing_user_id:
+            async with db.execute("SELECT id, name FROM users WHERE id=?", (existing_user_id,)) as cur:
+                row = await cur.fetchone()
+            if not row:
+                return RedirectResponse("/?mode=returning", status_code=303)
+            request.session["user_id"] = row["id"]
+            request.session["user_name"] = row["name"]
+            request.session.pop("lang", None)
+            return RedirectResponse("/", status_code=303)
+
+        # New user flow
+        if not first_name or not last_name:
+            return RedirectResponse("/?mode=new", status_code=303)
+        combined = f"{first_name} {last_name}"
+        name = normalize_name(combined)
+        if not name or len(name) < 2:
+            return templates.TemplateResponse(
+                "home/index.html",
+                {
+                    "request": request,
+                    "error": "Please enter your first and last name.",
+                    "prefill_first": first_name,
+                    "prefill_last": last_name,
+                    "existing_users": [],
+                },
+            )
+
+        # Hard exact-match check (similar-name detection comes in W1.7).
+        async with db.execute("SELECT id, name FROM users WHERE name=?", (name,)) as cur:
+            existing = await cur.fetchone()
+        if existing:
+            # Exact collision — sign them in as that user.
+            # W1.7 will upgrade this to a confirmation prompt.
+            request.session["user_id"] = existing["id"]
+            request.session["user_name"] = existing["name"]
+            request.session.pop("lang", None)
+            return RedirectResponse("/", status_code=303)
+
+        async with db.execute("INSERT INTO users(name) VALUES(?)", (name,)) as cur:
+            user_id = cur.lastrowid
+        await db.commit()
+        request.session["user_id"] = user_id
+        request.session["user_name"] = name
+        request.session.pop("lang", None)
+        return RedirectResponse("/", status_code=303)
     finally:
         await db.close()
-
-    request.session["user_id"] = user_id
-    request.session["user_name"] = name
-    request.session.pop("lang", None)
-    return RedirectResponse("/", status_code=303)
 
 
 @router.post("/signout")
