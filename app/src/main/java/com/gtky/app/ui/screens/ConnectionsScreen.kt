@@ -15,7 +15,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.gtky.app.Constants
 import com.gtky.app.data.entity.User
 import com.gtky.app.data.repository.ConnectionEntry
 import com.gtky.app.ui.LanguageToggle
@@ -25,7 +24,6 @@ import com.gtky.app.viewmodel.ConnectionDirection
 import com.gtky.app.viewmodel.ConnectionScope
 import com.gtky.app.viewmodel.ConnectionsViewModel
 import kotlin.math.roundToInt
-import kotlinx.coroutines.launch
 
 @Composable
 fun ConnectionsScreen(
@@ -35,13 +33,7 @@ fun ConnectionsScreen(
     onGoToProfile: (Long) -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
-    val coroutineScope = rememberCoroutineScope()
     var pendingProfileEntry by remember { mutableStateOf<ConnectionEntry?>(null) }
-    val profileGateMessage = t(
-        "Answer ${Constants.QUIZ_UNLOCK_THRESHOLD} questions first to see others' profiles.",
-        "Responde ${Constants.QUIZ_UNLOCK_THRESHOLD} preguntas primero para ver perfiles."
-    )
 
     pendingProfileEntry?.let { entry ->
         AlertDialog(
@@ -107,54 +99,58 @@ fun ConnectionsScreen(
                 actions = { LanguageToggle() }
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text(t("Show:", "Mostrar:"), fontWeight = FontWeight.Medium)
-                SingleChoiceSegmentedButtonRow {
-                    SegmentedButton(
-                        selected = state.scope == ConnectionScope.MINE,
-                        onClick = { viewModel.setScope(ConnectionScope.MINE) },
-                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
-                    ) { Text(t("My Connections", "Mis Conexiones")) }
-                    SegmentedButton(
-                        selected = state.scope == ConnectionScope.EVERYONE,
-                        onClick = { viewModel.setScope(ConnectionScope.EVERYONE) },
-                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
-                    ) { Text(t("Everyone", "Todos")) }
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        t("Show:", "Mostrar:"),
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        SegmentedButton(
+                            selected = state.scope == ConnectionScope.MINE,
+                            onClick = { viewModel.setScope(ConnectionScope.MINE) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
+                        ) { Text(t("My Connections", "Mis Conexiones")) }
+                        SegmentedButton(
+                            selected = state.scope == ConnectionScope.EVERYONE,
+                            onClick = { viewModel.setScope(ConnectionScope.EVERYONE) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
+                        ) { Text(t("Everyone", "Todos")) }
+                    }
                 }
-            }
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(t("View:", "Ver:"), fontWeight = FontWeight.Medium)
-                SingleChoiceSegmentedButtonRow {
-                    SegmentedButton(
-                        selected = state.direction == ConnectionDirection.MUTUAL,
-                        onClick = { viewModel.setDirection(ConnectionDirection.MUTUAL) },
-                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
-                    ) { Text(t("Mutual", "Mutuo")) }
-                    SegmentedButton(
-                        selected = state.direction == ConnectionDirection.ONE_WAY,
-                        onClick = { viewModel.setDirection(ConnectionDirection.ONE_WAY) },
-                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
-                    ) { Text(t("One-Way", "Unidireccional")) }
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        t("View:", "Ver:"),
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        SegmentedButton(
+                            selected = state.direction == ConnectionDirection.MUTUAL,
+                            onClick = { viewModel.setDirection(ConnectionDirection.MUTUAL) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
+                        ) { Text(t("Mutual", "Mutuo")) }
+                        SegmentedButton(
+                            selected = state.direction == ConnectionDirection.ONE_WAY,
+                            onClick = { viewModel.setDirection(ConnectionDirection.ONE_WAY) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
+                        ) { Text(t("One-Way", "Unidireccional")) }
+                    }
                 }
             }
 
@@ -216,11 +212,7 @@ fun ConnectionsScreen(
                                 isMineScope = state.scope == ConnectionScope.MINE,
                                 activeUserId = state.activeUserId,
                                 onClick = {
-                                    if (state.myAnswerCount < Constants.QUIZ_UNLOCK_THRESHOLD) {
-                                        coroutineScope.launch {
-                                            snackbarHostState.showSnackbar(profileGateMessage)
-                                        }
-                                    } else if (state.scope == ConnectionScope.MINE && state.activeUserId != null) {
+                                    if (state.scope == ConnectionScope.MINE && state.activeUserId != null) {
                                         val otherId = if (entry.userA.id == state.activeUserId) entry.userB.id else entry.userA.id
                                         onGoToProfile(otherId)
                                     } else {
@@ -247,11 +239,7 @@ fun ConnectionsScreen(
                                 label = label,
                                 score = score,
                                 onClick = {
-                                    if (state.myAnswerCount < Constants.QUIZ_UNLOCK_THRESHOLD) {
-                                        coroutineScope.launch {
-                                            snackbarHostState.showSnackbar(profileGateMessage)
-                                        }
-                                    } else if (state.scope == ConnectionScope.MINE && state.activeUserId != null) {
+                                    if (state.scope == ConnectionScope.MINE && state.activeUserId != null) {
                                         val targetId = if (from.id == state.activeUserId) to.id else from.id
                                         onGoToProfile(targetId)
                                     } else {
