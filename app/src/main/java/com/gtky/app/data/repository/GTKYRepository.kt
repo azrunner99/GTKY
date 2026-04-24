@@ -87,6 +87,7 @@ data class ConnectionEntry(
 
 data class IcebreakerData(
     val questionId: Long,
+    val category: String,
     val enText: String,
     val esText: String,
     val enOptions: List<String>,
@@ -225,6 +226,7 @@ class GTKYRepository(val db: GTKYDatabase) {
     suspend fun getDailyIcebreakerQuestion(slotOffset: Int = 0): IcebreakerData? {
         val questions = db.surveyQuestionDao().getAllQuestionsOnce()
             .filter { parseOptions(it.optionsJson).isNotEmpty() }
+            .shuffled(java.util.Random(0x474B5946L))
         if (questions.isEmpty()) return null
         val cal = java.util.Calendar.getInstance()
         val dayOfYear = cal.get(java.util.Calendar.DAY_OF_YEAR)
@@ -235,6 +237,7 @@ class GTKYRepository(val db: GTKYDatabase) {
         val esTemplate = q.questionTemplateEs.takeIf { it.isNotEmpty() } ?: q.questionTemplate
         return IcebreakerData(
             questionId = q.id,
+            category = q.category,
             enText = forSurvey(q.questionTemplate, "en"),
             esText = forSurvey(esTemplate, "es"),
             enOptions = enOpts,

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}GTKY – Users{% endblock %}
+{% block content %}
+<h2>{{ 'Usuarios activos' if lang == 'es' else 'Active Users' }}</h2>
+{% for u in users %}
+<div class="user-card">
+  {% if u.photo_filename %}
+    <div class="avatar"><img src="/static/photos/{{ u.photo_filename }}" alt="{{ u.name }}"></div>
+  {% else %}
+    <div class="avatar" style="background:var(--pico-primary-background);">{{ u.name[0].upper() }}</div>
+  {% endif %}
+  <div style="flex:1;">
+    <strong><a href="/profile/{{ u.id }}">{{ u.name }}</a></strong>
+    {% if u.id == current_user_id %}<span style="font-size:0.75rem; color:var(--pico-primary);"> ({{ 'tú' if lang == 'es' else 'you' }})</span>{% endif %}
+    <div style="font-size:0.8rem; color:var(--pico-muted-color);">{{ u.answered }} {{ 'respondidas' if lang == 'es' else 'answered' }}</div>
+  </div>
+  {% if u.id != current_user_id and u.answered > 0 %}
+  <form method="post" action="/quiz/start">
+    <input type="hidden" name="subject_id" value="{{ u.id }}">
+    <button type="submit" class="outline" style="padding:0.3rem 0.8rem; font-size:0.8rem;">Quiz</button>
+  </form>
+  {% endif %}
+</div>
+{% endfor %}
+<div style="margin-top:1.5rem;"><a href="/">← {{ 'Inicio' if lang == 'es' else 'Home' }}</a></div>
+{% endblock %}

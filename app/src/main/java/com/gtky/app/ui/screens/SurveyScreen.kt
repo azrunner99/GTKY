@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.sp
 import com.gtky.app.Constants
 import com.gtky.app.ui.LanguageToggle
 import com.gtky.app.ui.LocalAppLanguage
+import com.gtky.app.ui.categoryLabel
 import com.gtky.app.ui.t
 import com.gtky.app.util.forSurvey
 import com.gtky.app.ui.theme.GTKYCorrect
@@ -66,20 +67,13 @@ fun SurveyScreen(
                         progress = { progress },
                         modifier = Modifier.fillMaxWidth()
                     )
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = categoryLabel(q.category, language).uppercase(),
-                            fontSize = 11.sp,
-                            letterSpacing = 1.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                        )
-                        if (state.totalAnswered >= Constants.QUIZ_UNLOCK_THRESHOLD) {
+                    if (state.totalAnswered >= Constants.QUIZ_UNLOCK_THRESHOLD) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                            contentAlignment = Alignment.CenterEnd
+                        ) {
                             Text(
                                 text = t("Keep Going!", "¡Sigue adelante!"),
                                 fontSize = 11.sp,
@@ -110,6 +104,8 @@ fun SurveyScreen(
 
                             QuestionContent(
                                 questionTemplate = displayTemplate,
+                                category = q.category,
+                                language = language,
                                 displayOptions = displayOptions,
                                 englishOptions = state.options,
                                 selectedAnswer = state.selectedAnswer,
@@ -160,6 +156,8 @@ fun SurveyScreen(
 @Composable
 private fun QuestionContent(
     questionTemplate: String,
+    category: String,
+    language: String,
     displayOptions: List<String>,
     englishOptions: List<String>,
     selectedAnswer: String?,
@@ -173,6 +171,19 @@ private fun QuestionContent(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
+        Surface(
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+            shape = MaterialTheme.shapes.small
+        ) {
+            Text(
+                text = categoryLabel(category, language).uppercase(),
+                fontSize = 11.sp,
+                letterSpacing = 1.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+            )
+        }
         Text(
             text = questionTemplate,
             fontSize = 22.sp,
@@ -240,24 +251,3 @@ private fun AllAnsweredContent(onBack: () -> Unit, onGoToQuiz: () -> Unit) {
     }
 }
 
-private fun categoryLabel(category: String, lang: String): String {
-    if (lang != "es") return category
-    return when (category) {
-        "Food" -> "Comida"
-        "Travel" -> "Viajes"
-        "Entertainment" -> "Entretenimiento"
-        "Lifestyle" -> "Estilo de vida"
-        "Career" -> "Carrera"
-        "Social" -> "Social"
-        "Fashion" -> "Moda"
-        "Health" -> "Salud"
-        "Humor" -> "Humor"
-        "Money" -> "Dinero"
-        "Movies" -> "Películas"
-        "Music" -> "Música"
-        "Sports" -> "Deportes"
-        "Style" -> "Estilo"
-        "Tech" -> "Tecnología"
-        else -> category
-    }
-}

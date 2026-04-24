@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}GTKY – Home{% endblock %}
+{% block content %}
+<div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem;">
+  {% if user.photo_filename %}
+    <div class="avatar"><img src="/static/photos/{{ user.photo_filename }}" alt="{{ user.name }}"></div>
+  {% else %}
+    <div class="avatar" style="background:var(--pico-primary-background);">{{ user.name[0].upper() }}</div>
+  {% endif %}
+  <div>
+    <h2 style="margin:0;">{{ 'Hola' if lang == 'es' else 'Hey' }}, {{ user.name }}!</h2>
+    <a href="/profile/{{ user_id }}" style="font-size:0.85rem;">{{ 'Ver perfil' if lang == 'es' else 'View profile' }}</a>
+  </div>
+</div>
+
+{% if icebreaker %}
+<div class="icebreaker-card">
+  <span class="category-badge">{{ icebreaker.category }}</span>
+  <p style="font-size:0.9rem; color:var(--pico-muted-color); margin:0 0 0.25rem;">{{ icebreaker.user_name }}</p>
+  <p style="font-weight:600; margin:0 0 0.5rem;">{{ icebreaker.question }}</p>
+  <p style="color:var(--pico-primary); font-weight:700; margin:0;">{{ icebreaker.answer }}</p>
+</div>
+{% endif %}
+
+<div class="progress-wrap">
+  <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.25rem;">
+    <span>{{ answered_count }} {{ 'respondidas' if lang == 'es' else 'answered' }}</span>
+    {% if not quiz_unlocked %}
+    <span>{{ quiz_threshold - answered_count }} {{ 'para desbloquear quiz' if lang == 'es' else 'to unlock quiz' }}</span>
+    {% else %}
+    <span style="color:var(--pico-primary);">{{ '¡Quiz desbloqueado!' if lang == 'es' else 'Quiz unlocked!' }}</span>
+    {% endif %}
+  </div>
+  <progress value="{{ answered_count }}" max="{{ quiz_threshold }}"></progress>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
+  <a href="/survey" role="button">{{ 'Encuesta' if lang == 'es' else 'Survey' }}</a>
+  {% if quiz_unlocked %}
+    <a href="/quiz" role="button" class="secondary">Quiz</a>
+  {% else %}
+    <button disabled class="secondary">Quiz 🔒</button>
+  {% endif %}
+  <a href="/connections" role="button" class="outline">{{ 'Conexiones' if lang == 'es' else 'Connections' }}</a>
+  <a href="/users" role="button" class="outline secondary">{{ 'Usuarios' if lang == 'es' else 'Users' }}</a>
+</div>
+
+<div style="display:flex; gap:1rem; margin-top:1rem;">
+  <a href="/groups" style="font-size:0.85rem;">{{ 'Grupos' if lang == 'es' else 'Groups' }}</a>
+  <a href="/about" style="font-size:0.85rem;">{{ 'Acerca de' if lang == 'es' else 'About' }}</a>
+  <a href="/admin" style="font-size:0.85rem;">Admin</a>
+  <form method="post" action="/signout" style="margin:0;">
+    <button type="submit" class="outline secondary" style="padding:0.2rem 0.6rem; font-size:0.85rem;">
+      {{ 'Salir' if lang == 'es' else 'Sign out' }}
+    </button>
+  </form>
+</div>
+{% endblock %}

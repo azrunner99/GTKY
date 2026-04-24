@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}GTKY – Admin{% endblock %}
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+  <h2 style="margin:0;">Admin</h2>
+  <form method="post" action="/admin/logout">
+    <button type="submit" class="outline secondary" style="padding:0.3rem 0.8rem; font-size:0.85rem;">{{ 'Salir' if lang == 'es' else 'Log out' }}</button>
+  </form>
+</div>
+
+{% if pin_is_default %}
+<div style="background:var(--pico-ins-background, #e8f5e9); border-left:4px solid var(--pico-primary); padding:0.75rem 1rem; border-radius:0.25rem; margin-bottom:1rem;">
+  <strong>⚠️ {{ 'Cambia el PIN por defecto (1234).' if lang == 'es' else 'Change the default PIN (1234).' }}</strong>
+</div>
+{% endif %}
+
+<details style="margin-bottom:1.5rem;">
+  <summary>{{ 'Cambiar PIN' if lang == 'es' else 'Change PIN' }}</summary>
+  <form method="post" action="/admin/pin" style="margin-top:0.75rem; display:flex; gap:0.5rem;">
+    <input type="password" name="new_pin" placeholder="{{ 'Nuevo PIN (4+ dígitos)' if lang == 'es' else 'New PIN (4+ digits)' }}" pattern="[0-9]{4,}" required style="flex:1; margin:0;">
+    <button type="submit">{{ 'Guardar' if lang == 'es' else 'Save' }}</button>
+  </form>
+</details>
+
+<h3 style="font-size:1rem;">{{ 'Usuarios registrados' if lang == 'es' else 'Registered Users' }} ({{ users | length }})</h3>
+{% for u in users %}
+<div style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem 0; border-bottom:1px solid var(--pico-muted-border-color);">
+  {% if u.photo_filename %}
+    <div class="avatar" style="width:48px; height:48px; font-size:1.2rem;"><img src="/static/photos/{{ u.photo_filename }}" alt="{{ u.name }}"></div>
+  {% else %}
+    <div class="avatar" style="width:48px; height:48px; font-size:1.2rem; background:var(--pico-primary-background);">{{ u.name[0].upper() }}</div>
+  {% endif %}
+  <div style="flex:1;">
+    <strong>{{ u.name }}</strong>
+    <div style="font-size:0.75rem; color:var(--pico-muted-color);">{{ u.answered }} {{ 'resp.' if lang == 'es' else 'ans.' }} · {{ u.created_at[:10] }}</div>
+  </div>
+  <div style="display:flex; gap:0.4rem;">
+    {% if u.photo_filename %}
+    <form method="post" action="/admin/users/{{ u.id }}/photo/delete">
+      <button type="submit" class="outline secondary" style="padding:0.2rem 0.5rem; font-size:0.75rem;">🗑 {{ 'Foto' if lang == 'es' else 'Photo' }}</button>
+    </form>
+    {% endif %}
+    <form method="post" action="/admin/users/{{ u.id }}/delete" onsubmit="return confirm('Delete {{ u.name }}?')">
+      <button type="submit" class="outline secondary" style="padding:0.2rem 0.5rem; font-size:0.75rem; color:var(--pico-del-color);">{{ 'Eliminar' if lang == 'es' else 'Delete' }}</button>
+    </form>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

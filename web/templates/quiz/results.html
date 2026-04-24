@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}GTKY – Quiz Results{% endblock %}
+{% block content %}
+<div style="text-align:center; padding:2rem 0;">
+  {% if subject.photo_filename %}
+    <div class="avatar avatar-lg" style="margin:0 auto 0.75rem;"><img src="/static/photos/{{ subject.photo_filename }}" alt="{{ subject.name }}"></div>
+  {% else %}
+    <div class="avatar avatar-lg" style="margin:0 auto 0.75rem; background:var(--pico-primary-background);">{{ subject.name[0].upper() }}</div>
+  {% endif %}
+
+  <h2>{{ 'Quiz terminado' if lang == 'es' else 'Quiz complete' }}</h2>
+  <p style="font-size:1.1rem;">
+    {{ 'Puntuación:' if lang == 'es' else 'Score:' }}
+    <strong style="font-size:2rem; color:var(--pico-primary);">{{ score }}/{{ total }}</strong>
+  </p>
+  <p style="color:var(--pico-muted-color);">
+    {% set pct = (score / total * 100) | round | int %}
+    {% if pct == 100 %}
+      {{ '¡Perfecto! ¡Los conoces muy bien!' if lang == 'es' else "Perfect! You know them really well!" }}
+    {% elif pct >= 70 %}
+      {{ '¡Buen trabajo!' if lang == 'es' else 'Nice work!' }}
+    {% elif pct >= 50 %}
+      {{ 'No está mal.' if lang == 'es' else 'Not bad.' }}
+    {% else %}
+      {{ 'Sigue aprendiendo.' if lang == 'es' else 'Keep learning!' }}
+    {% endif %}
+  </p>
+
+  <div style="display:grid; gap:0.75rem; margin-top:1.5rem;">
+    <a href="/quiz" role="button">{{ 'Otro quiz' if lang == 'es' else 'Quiz someone else' }}</a>
+    <a href="/connections" role="button" class="outline secondary">{{ 'Ver conexiones' if lang == 'es' else 'See connections' }}</a>
+    <a href="/" role="button" class="outline">{{ 'Inicio' if lang == 'es' else 'Home' }}</a>
+  </div>
+</div>
+{% endblock %}

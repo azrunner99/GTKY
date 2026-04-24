@@ -24,8 +24,9 @@ import com.gtky.app.data.entity.QuizResult
 import com.gtky.app.data.entity.User
 import com.gtky.app.data.repository.QuizQuestion
 import com.gtky.app.ui.LanguageToggle
-import com.gtky.app.ui.components.Avatar
 import com.gtky.app.ui.LocalAppLanguage
+import com.gtky.app.ui.categoryLabel
+import com.gtky.app.ui.components.Avatar
 import com.gtky.app.ui.t
 import com.gtky.app.ui.theme.GTKYCorrect
 import com.gtky.app.ui.theme.GTKYWrong
@@ -165,6 +166,7 @@ fun QuizScreen(
 
                             QuizQuestionContent(
                                 questionText = forQuiz(questionTemplate, q.subjectUser.name),
+                                category = q.question.category,
                                 subjectUser = q.subjectUser,
                                 subjectName = q.subjectUser.name,
                                 displayOptions = displayOptions,
@@ -221,6 +223,7 @@ fun QuizScreen(
 @Composable
 private fun QuizQuestionContent(
     questionText: String,
+    category: String,
     subjectUser: User,
     subjectName: String,
     displayOptions: List<String>,
@@ -263,13 +266,28 @@ private fun QuizQuestionContent(
             )
         }
 
+        val language = LocalAppLanguage.current
+        Spacer(Modifier.height(8.dp))
+        Surface(
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+            shape = MaterialTheme.shapes.small
+        ) {
+            Text(
+                text = categoryLabel(category, language).uppercase(),
+                fontSize = 11.sp,
+                letterSpacing = 1.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+            )
+        }
         Text(
             text = questionText,
             fontSize = 20.sp,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
             lineHeight = 28.sp,
-            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+            modifier = Modifier.padding(bottom = 8.dp)
         )
 
         displayOptions.forEachIndexed { index, displayOption ->

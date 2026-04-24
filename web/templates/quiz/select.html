@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}GTKY – Quiz{% endblock %}
+{% block content %}
+<h2>{{ '¿A quién quieres conocer?' if lang == 'es' else 'Who do you want to quiz on?' }}</h2>
+{% if others %}
+  {% for u in others %}
+  <div class="user-card">
+    {% if u.photo_filename %}
+      <div class="avatar"><img src="/static/photos/{{ u.photo_filename }}" alt="{{ u.name }}"></div>
+    {% else %}
+      <div class="avatar" style="background:var(--pico-primary-background);">{{ u.name[0].upper() }}</div>
+    {% endif %}
+    <div style="flex:1;">
+      <strong>{{ u.name }}</strong>
+      <div style="font-size:0.8rem; color:var(--pico-muted-color);">{{ u.answered }} {{ 'preguntas respondidas' if lang == 'es' else 'questions answered' }}</div>
+    </div>
+    <form method="post" action="/quiz/start">
+      <input type="hidden" name="subject_id" value="{{ u.id }}">
+      <button type="submit" class="outline" style="padding:0.3rem 0.9rem;">{{ 'Quiz' }}</button>
+    </form>
+  </div>
+  {% endfor %}
+{% else %}
+  <p style="color:var(--pico-muted-color);">{{ 'Nadie ha respondido preguntas todavía.' if lang == 'es' else 'No one else has answered questions yet.' }}</p>
+{% endif %}
+<div style="margin-top:1.5rem;"><a href="/">← {{ 'Inicio' if lang == 'es' else 'Home' }}</a></div>
+{% endblock %}

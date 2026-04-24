@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}GTKY – Quiz Result{% endblock %}
+{% block content %}
+<div style="text-align:center; padding:2rem 0;">
+  {% if is_correct %}
+    <div style="font-size:3rem; margin-bottom:0.5rem;">✅</div>
+    <h2 class="answer-correct">{{ '¡Correcto!' if lang == 'es' else 'Correct!' }}</h2>
+    <p>{{ correct_display }}</p>
+  {% else %}
+    <div style="font-size:3rem; margin-bottom:0.5rem;">❌</div>
+    <h2 class="answer-wrong">{{ 'Incorrecto' if lang == 'es' else 'Wrong' }}</h2>
+    <p>{{ 'Respondiste:' if lang == 'es' else 'You guessed:' }} <strong>{{ guessed_display }}</strong></p>
+    <p>{{ 'Respuesta:' if lang == 'es' else 'Answer:' }} <strong>{{ correct_display }}</strong></p>
+  {% endif %}
+  <p style="color:var(--pico-muted-color); font-size:0.9rem;">
+    {{ question_num }}/{{ total }} · {{ score }} {{ 'correctas' if lang == 'es' else 'correct' }}
+  </p>
+
+  {% if is_last %}
+    <a href="/quiz/results" role="button" style="display:block;">{{ 'Ver resultados' if lang == 'es' else 'See results' }}</a>
+  {% else %}
+    <a href="/quiz/question" role="button" style="display:block;">{{ 'Siguiente' if lang == 'es' else 'Next question' }} →</a>
+  {% endif %}
+</div>
+{% endblock %}

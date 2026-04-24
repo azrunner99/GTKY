@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}GTKY – About{% endblock %}
+{% block content %}
+<div style="text-align:center; margin-bottom:2rem;">
+  <div style="font-size:3rem; font-weight:900; color:var(--pico-primary);">GTKY</div>
+  <div style="font-size:1.1rem; color:var(--pico-secondary);">Get To Know Ya</div>
+</div>
+
+<article>
+  <h3>{{ '¿Qué es GTKY?' if lang == 'es' else 'What is GTKY?' }}</h3>
+  <p>
+    {% if lang == 'es' %}
+    GTKY es una aplicación de rompehielos para grupos. Responde preguntas sobre ti mismo, luego pon a prueba qué tan bien conoces a los demás — y descubre qué tan bien ellos te conocen a ti.
+    {% else %}
+    GTKY is an icebreaker app for groups. Answer questions about yourself, then test how well you know the others — and see how well they know you.
+    {% endif %}
+  </p>
+</article>
+
+<article>
+  <h3>{{ '¿Cómo funciona?' if lang == 'es' else 'How it works' }}</h3>
+  <ol>
+    <li>{{ 'Entra con tu nombre.' if lang == 'es' else 'Sign in with your name.' }}</li>
+    <li>{{ 'Responde preguntas de encuesta sobre ti.' if lang == 'es' else 'Answer survey questions about yourself.' }}</li>
+    <li>{{ 'Desbloquea el quiz después de 10 respuestas.' if lang == 'es' else 'Unlock the quiz after 10 answers.' }}</li>
+    <li>{{ 'Pon a prueba qué tan bien conoces a los demás.' if lang == 'es' else 'Test how well you know your group.' }}</li>
+    <li>{{ 'Mira tus conexiones — quién te conoce mejor.' if lang == 'es' else 'See your connections — who knows you best.' }}</li>
+  </ol>
+</article>
+
+<article>
+  <h3>{{ 'Preguntas frecuentes' if lang == 'es' else 'FAQ' }}</h3>
+
+  <details>
+    <summary>{{ '¿Mis respuestas son privadas?' if lang == 'es' else 'Are my answers private?' }}</summary>
+    <p>{{ 'No. Cualquier persona del grupo puede ver tu perfil.' if lang == 'es' else 'No. Anyone in the group can view your profile answers.' }}</p>
+  </details>
+
+  <details>
+    <summary>{{ '¿Puedo cambiar mis respuestas?' if lang == 'es' else 'Can I change my answers?' }}</summary>
+    <p>{{ 'Por ahora, las respuestas son permanentes. Pide al admin que reinicie tu cuenta si es necesario.' if lang == 'es' else 'Currently answers are permanent. Ask an admin to reset your account if needed.' }}</p>
+  </details>
+
+  <details>
+    <summary>{{ '¿Cómo funciona la puntuación del quiz?' if lang == 'es' else 'How does quiz scoring work?' }}</summary>
+    <p>{{ 'Cada respuesta correcta vale un punto. Las puntuaciones de conexión son el porcentaje de aciertos.' if lang == 'es' else 'Each correct answer is worth one point. Connection scores are your percentage correct.' }}</p>
+  </details>
+
+  <details>
+    <summary>{{ '¿Quién es el admin?' if lang == 'es' else 'Who is the admin?' }}</summary>
+    <p>{{ 'El admin puede gestionar usuarios y cambiar el PIN. El PIN predeterminado es 1234 — cámbialo.' if lang == 'es' else 'The admin can manage users and change the PIN. The default PIN is 1234 — change it.' }}</p>
+  </details>
+</article>
+
+<div style="margin-top:1.5rem;"><a href="/">← {{ 'Inicio' if lang == 'es' else 'Home' }}</a></div>
+{% endblock %}

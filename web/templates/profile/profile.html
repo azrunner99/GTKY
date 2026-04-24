@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}GTKY – {{ subject.name }}{% endblock %}
+{% block content %}
+<div style="text-align:center; margin-bottom:1.5rem;">
+  {% if subject.photo_filename %}
+    <div class="avatar avatar-lg" style="margin:0 auto 0.75rem;"><img src="/static/photos/{{ subject.photo_filename }}" alt="{{ subject.name }}"></div>
+  {% else %}
+    <div class="avatar avatar-lg" style="margin:0 auto 0.75rem; background:var(--pico-primary-background);">{{ subject.name[0].upper() }}</div>
+  {% endif %}
+  <h2 style="margin:0;">{{ subject.name }}</h2>
+
+  {% if is_own %}
+  <div style="margin-top:1rem;">
+    <form method="post" action="/profile/photo" enctype="multipart/form-data" style="display:inline-flex; gap:0.5rem; align-items:center;">
+      <input type="file" name="photo" accept="image/*" style="font-size:0.8rem; max-width:180px;">
+      <button type="submit" class="outline" style="padding:0.3rem 0.8rem; font-size:0.8rem;">{{ 'Subir foto' if lang == 'es' else 'Upload photo' }}</button>
+    </form>
+    {% if subject.photo_filename %}
+    <form method="post" action="/profile/photo/delete" style="display:inline; margin-left:0.5rem;">
+      <button type="submit" class="outline secondary" style="padding:0.3rem 0.8rem; font-size:0.8rem;">{{ 'Quitar foto' if lang == 'es' else 'Remove photo' }}</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+{% if answers %}
+  {% set ns = namespace(current_cat='') %}
+  {% for a in answers %}
+    {% if a.category != ns.current_cat %}
+      {% set ns.current_cat = a.category %}
+      <h4 style="font-size:0.85rem; color:var(--pico-muted-color); text-transform:uppercase; letter-spacing:0.05em; margin:1rem 0 0.5rem;">{{ a.category }}</h4>
+    {% endif %}
+    <div style="display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid var(--pico-muted-border-color);">
+      <span style="font-size:0.9rem; color:var(--pico-muted-color); flex:1; padding-right:1rem;">{{ a.question }}</span>
+      <span style="font-weight:600; font-size:0.9rem; color:var(--pico-primary); white-space:nowrap;">{{ a.answer }}</span>
+    </div>
+  {% endfor %}
+{% else %}
+  <p style="color:var(--pico-muted-color); text-align:center;">{{ 'Todavía no hay respuestas.' if lang == 'es' else 'No answers yet.' }}</p>
+{% endif %}
+
+<div style="margin-top:1.5rem; display:flex; gap:1rem;">
+  <a href="/users">← {{ 'Usuarios' if lang == 'es' else 'Users' }}</a>
+  {% if not is_own %}
+  <form method="post" action="/quiz/start">
+    <input type="hidden" name="subject_id" value="{{ subject.id }}">
+    <button type="submit" class="outline" style="padding:0.3rem 0.9rem; font-size:0.85rem;">Quiz {{ subject.name }}</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

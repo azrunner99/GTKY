@@ -32,6 +32,8 @@ import com.gtky.app.data.entity.User
 import com.gtky.app.data.repository.IcebreakerData
 import com.gtky.app.data.repository.SimilarNameMatch
 import com.gtky.app.ui.LanguageToggle
+import com.gtky.app.ui.LocalAppLanguage
+import com.gtky.app.ui.categoryLabel
 import com.gtky.app.ui.components.Avatar
 import com.gtky.app.ui.plural
 import com.gtky.app.ui.t
@@ -296,11 +298,25 @@ private fun LandingChoice(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (icebreaker != null) {
+            val language = LocalAppLanguage.current
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.padding(bottom = 4.dp)
             ) {
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    Text(
+                        text = categoryLabel(icebreaker.category, language).uppercase(),
+                        fontSize = 11.sp,
+                        letterSpacing = 1.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
                 Text(
                     text = icebreaker.enText,
                     fontSize = 18.sp,

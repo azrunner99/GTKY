@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}GTKY – Connections{% endblock %}
+{% block content %}
+<h2>{{ 'Conexiones' if lang == 'es' else 'Connections' }}</h2>
+
+{% if my_scores %}
+<h3 style="font-size:1rem; margin-bottom:0.5rem;">{{ 'Mis puntajes' if lang == 'es' else 'My quiz scores' }}</h3>
+{% for s in my_scores %}
+<div class="user-card">
+  {% if s.photo_filename %}
+    <div class="avatar"><img src="/static/photos/{{ s.photo_filename }}" alt="{{ s.name }}"></div>
+  {% else %}
+    <div class="avatar" style="background:var(--pico-primary-background);">{{ s.name[0].upper() }}</div>
+  {% endif %}
+  <div style="flex:1;">
+    <strong><a href="/profile/{{ s.id }}">{{ s.name }}</a></strong>
+    <div class="score-bar"><div class="score-fill" style="width:{{ s.pct }}%;"></div></div>
+    <div style="font-size:0.8rem; color:var(--pico-muted-color);">{{ s.correct }}/{{ s.quizzed }} · {{ s.pct }}%</div>
+  </div>
+  <a href="/quiz" role="button" class="outline" style="padding:0.3rem 0.8rem; font-size:0.8rem;">{{ 'Retry' }}</a>
+</div>
+{% endfor %}
+{% else %}
+<p style="color:var(--pico-muted-color);">{{ 'Todavía no has tomado ningún quiz.' if lang == 'es' else "You haven't taken any quizzes yet." }}</p>
+{% endif %}
+
+{% if their_scores %}
+<h3 style="font-size:1rem; margin: 1.5rem 0 0.5rem;">{{ '¿Quién me conoce?' if lang == 'es' else 'Who knows me?' }}</h3>
+{% for s in their_scores %}
+<div class="user-card">
+  {% if s.photo_filename %}
+    <div class="avatar"><img src="/static/photos/{{ s.photo_filename }}" alt="{{ s.name }}"></div>
+  {% else %}
+    <div class="avatar" style="background:var(--pico-primary-background);">{{ s.name[0].upper() }}</div>
+  {% endif %}
+  <div style="flex:1;">
+    <strong>{{ s.name }}</strong>
+    <div class="score-bar"><div class="score-fill" style="width:{{ s.pct }}%;"></div></div>
+    <div style="font-size:0.8rem; color:var(--pico-muted-color);">{{ s.correct }}/{{ s.quizzed }} · {{ s.pct }}%</div>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+<div style="margin-top:1.5rem;"><a href="/">← {{ 'Inicio' if lang == 'es' else 'Home' }}</a></div>
+{% endblock %}

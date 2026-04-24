@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}GTKY – Survey{% endblock %}
+{% block content %}
+<div class="progress-wrap">
+  <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:0.25rem;">
+    <span>{{ total_answered }} {{ 'respondidas' if lang == 'es' else 'answered' }}</span>
+    {% if just_unlocked %}
+      <span style="color:var(--pico-primary); font-weight:700;">{{ '¡Quiz desbloqueado!' if lang == 'es' else 'Quiz unlocked! 🎉' }}</span>
+    {% elif can_quit %}
+      <span style="color:var(--pico-primary);">{{ '¡Sigue adelante!' if lang == 'es' else 'Keep going!' }}</span>
+    {% else %}
+      <span>{{ quiz_threshold - total_answered }} {{ 'para quiz' if lang == 'es' else 'to unlock quiz' }}</span>
+    {% endif %}
+  </div>
+  <progress value="{{ [total_answered, quiz_threshold] | min }}" max="{{ quiz_threshold }}"></progress>
+</div>
+
+<div class="card-question">
+  <span class="category-badge">{{ category }}</span>
+  <h2>{{ question_text }}</h2>
+
+  <form method="post" action="/survey/answer">
+    <input type="hidden" name="question_id" value="{{ question_id }}">
+    {% for i in range(display_options | length) %}
+    <button type="submit" name="answer_en" value="{{ english_options[i] }}" class="option-btn outline">
+      {{ display_options[i] }}
+    </button>
+    {% endfor %}
+  </form>
+
+  {% if can_quit %}
+  <form method="post" action="/" style="margin-top:1rem;">
+    <button type="submit" style="width:100%;">{{ 'Terminado' if lang == 'es' else 'Finished' }}</button>
+  </form>
+  {% endif %}
+
+  <form method="post" action="/survey/skip" style="margin-top:0.5rem;">
+    <input type="hidden" name="question_id" value="{{ question_id }}">
+    <button type="submit" class="outline secondary" style="width:100%; opacity:0.5; font-size:0.85rem;">
+      {{ 'Omitir' if lang == 'es' else 'Skip this question' }}
+    </button>
+  </form>
+</div>
+{% endblock %}

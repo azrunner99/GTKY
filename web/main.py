@@ -1,0 +1,60 @@
+import socket
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
+
+from config import SECRET_KEY, PHOTOS_DIR, STATIC_DIR
+from database import init_db
+from seed import seed_questions
+
+from routers import auth, home, survey, quiz, connections, active_users, profile, groups, admin, about
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    await seed_questions()
+    PHOTOS_DIR.mkdir(parents=True, exist_ok=True)
+    yield
+
+
+app = FastAPI(lifespan=lifespan, title="GTKY")
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SECRET_KEY,
+    max_age=60 * 60 * 24 * 30,  # 30 days
+    session_cookie="gtky_session",
+    https_only=False,
+)
+
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+app.include_router(auth.router)
+app.include_router(home.router)
+app.include_router(survey.router)
+app.include_router(quiz.router)
+app.include_router(connections.router)
+app.include_router(active_users.router)
+app.include_router(profile.router)
+app.include_router(groups.router)
+app.include_router(admin.router)
+app.include_router(about.router)
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    hostname = socket.gethostname()
+    try:
+        lan_ip = socket.gethostbyname(hostname)
+    except Exception:
+        lan_ip = "localhost"
+
+    print("\n=== GTKY Web App ===")
+    print(f"Local:   http://localhost:8000")
+    print(f"Network: http://{lan_ip}:8000")
+    print("Share the Network URL with others on your WiFi\n")
+
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

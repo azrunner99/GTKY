@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}GTKY – Survey Complete{% endblock %}
+{% block content %}
+<div style="text-align:center; padding:2rem 0;">
+  <h2>{{ '¡Has respondido todas las preguntas!' if lang == 'es' else "You've answered all the questions!" }}</h2>
+  <p style="color:var(--pico-muted-color);">
+    {{ 'Ya estás listo. Ahora ve a conocer a los demás.' if lang == 'es' else "You're fully set up. Now go learn about everyone else." }}
+  </p>
+  <a href="/quiz" role="button" style="display:block; margin-bottom:0.75rem;">{{ 'Tomar un Quiz' if lang == 'es' else 'Take a Quiz' }}</a>
+  <a href="/" role="button" class="outline secondary" style="display:block;">{{ 'Inicio' if lang == 'es' else 'Back Home' }}</a>
+</div>
+{% endblock %}

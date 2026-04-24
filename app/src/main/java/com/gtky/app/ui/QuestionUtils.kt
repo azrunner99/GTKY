@@ -1,5 +1,31 @@
 package com.gtky.app.ui
 
+fun categoryLabel(category: String, lang: String): String {
+    if (lang != "es") return category
+    return when (category) {
+        "Food" -> "Comida"
+        "Travel" -> "Viajes"
+        "Entertainment" -> "Entretenimiento"
+        "Lifestyle" -> "Estilo de vida"
+        "Career" -> "Carrera"
+        "Social" -> "Social"
+        "Fashion" -> "Moda"
+        "Health" -> "Salud"
+        "Humor" -> "Humor"
+        "Money" -> "Dinero"
+        "Movies" -> "Películas"
+        "Music" -> "Música"
+        "Sports" -> "Deportes"
+        "Style" -> "Estilo"
+        "Tech" -> "Tecnología"
+        "Would You Rather" -> "¿Qué prefieres?"
+        "Childhood" -> "Infancia"
+        "Relationships" -> "Relaciones"
+        "Work" -> "Trabajo"
+        else -> category
+    }
+}
+
 object QuestionUtils {
 
     fun toSelfEn(template: String): String {

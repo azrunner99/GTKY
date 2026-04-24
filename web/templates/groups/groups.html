@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}GTKY – Groups{% endblock %}
+{% block content %}
+<h2>{{ 'Grupos' if lang == 'es' else 'Groups' }}</h2>
+
+<details style="margin-bottom:1.5rem;">
+  <summary>{{ 'Crear grupo' if lang == 'es' else 'Create a group' }}</summary>
+  <form method="post" action="/groups/create" style="margin-top:0.75rem;">
+    <div style="display:flex; gap:0.5rem;">
+      <input type="text" name="name" placeholder="{{ 'Nombre del grupo' if lang == 'es' else 'Group name' }}" required style="flex:1; margin:0;">
+      <button type="submit">{{ 'Crear' if lang == 'es' else 'Create' }}</button>
+    </div>
+  </form>
+</details>
+
+{% if groups %}
+  {% for g in groups %}
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:0.75rem 0; border-bottom:1px solid var(--pico-muted-border-color);">
+    <div>
+      <strong>{{ g.name }}</strong>
+      <div style="font-size:0.8rem; color:var(--pico-muted-color);">{{ g.member_count }} {{ 'miembros' if lang == 'es' else 'members' }}</div>
+    </div>
+    {% if g.is_member %}
+    <form method="post" action="/groups/{{ g.id }}/leave">
+      <button type="submit" class="outline secondary" style="padding:0.3rem 0.8rem; font-size:0.8rem;">{{ 'Salir' if lang == 'es' else 'Leave' }}</button>
+    </form>
+    {% else %}
+    <form method="post" action="/groups/{{ g.id }}/join">
+      <button type="submit" class="outline" style="padding:0.3rem 0.8rem; font-size:0.8rem;">{{ 'Unirse' if lang == 'es' else 'Join' }}</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+{% else %}
+  <p style="color:var(--pico-muted-color);">{{ 'No hay grupos todavía.' if lang == 'es' else 'No groups yet.' }}</p>
+{% endif %}
+
+<div style="margin-top:1.5rem;"><a href="/">← {{ 'Inicio' if lang == 'es' else 'Home' }}</a></div>
+{% endblock %}
