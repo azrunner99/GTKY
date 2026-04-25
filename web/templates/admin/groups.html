@@ -26,7 +26,9 @@
 {% for g in groups %}
 <div style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem 0; border-bottom:1px solid var(--pico-muted-border-color);">
   <div style="flex:1;">
-    <strong>{{ g.name }}</strong>
+    <a href="/admin/groups/{{ g.id }}" style="text-decoration:none; color:inherit;">
+      <strong>{{ g.name }}</strong>
+    </a>
     <div style="font-size:0.75rem; color:var(--pico-muted-color);">
       {{ g.member_count }} {{ 'miembro' if lang == 'es' else 'member' }}{% if g.member_count != 1 %}s{% endif %}
       · {{ g.created_at[:10] }}

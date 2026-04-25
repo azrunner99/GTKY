@@ -2,6 +2,8 @@
 
 ## Web UX Fix Pack
 
+- **W3.5 — Admin group member assignment** — New `/admin/groups/{gid}` detail page lets admins check/uncheck users to assign group membership. POSTs to `/admin/groups/{gid}/members` which rewrites the group's memberships to match the checked set (delete all + re-insert selected). Group names in the admin groups list are now links to the detail page.
+
 - **W3.4 — Admin groups management page** — New `/admin/groups` route with create form, list of existing groups with member counts and creation dates, and per-group delete with confirmation. Linked from the main admin page via a "Manage groups" button above the user list.
 
 - **W3.3 — Group creation is admin-only** — `/groups/create` rejects non-admins (returns 303 to `/groups` without side effects). The user-facing `/groups` page no longer shows the create form; a bilingual hint line explains that admins create groups. Self-assignment (join / leave) remains open to all signed-in users. Admin delete-group route added to `admin.py`; memberships cascade-delete via existing FK.

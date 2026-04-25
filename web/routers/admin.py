@@ -185,6 +185,69 @@ async def admin_groups(request: Request):
     )
 
 
+@router.get("/groups/{gid:int}", response_class=HTMLResponse)
+async def admin_group_detail(request: Request, gid: int):
+    if not is_admin(request):
+        return RedirectResponse("/admin")
+    lang = request.session.get("lang", "en")
+
+    db = await get_db()
+    try:
+        async with db.execute("SELECT id, name FROM groups WHERE id=?", (gid,)) as cur:
+            group = await cur.fetchone()
+        if not group:
+            return RedirectResponse("/admin/groups")
+
+        async with db.execute(
+            """
+            SELECT u.id, u.name, u.photo_filename,
+                   MAX(CASE WHEN ugm.group_id=? THEN 1 ELSE 0 END) AS is_member
+            FROM users u
+            LEFT JOIN user_group_memberships ugm ON ugm.user_id = u.id AND ugm.group_id=?
+            GROUP BY u.id
+            ORDER BY u.name
+            """,
+            (gid, gid),
+        ) as cur:
+            users = [dict(r) for r in await cur.fetchall()]
+    finally:
+        await db.close()
+
+    return templates.TemplateResponse(
+        "admin/group_detail.html",
+        {"request": request, "lang": lang, "group": dict(group), "users": users},
+    )
+
+
+@router.post("/groups/{gid:int}/members")
+async def admin_group_set_members(request: Request, gid: int):
+    if not is_admin(request):
+        return RedirectResponse("/admin")
+    form = await request.form()
+    selected = set()
+    for v in form.getlist("member_ids"):
+        try:
+            selected.add(int(v))
+        except ValueError:
+            pass
+
+    db = await get_db()
+    try:
+        async with db.execute("SELECT id FROM users") as cur:
+            all_ids = {r["id"] for r in await cur.fetchall()}
+        await db.execute("DELETE FROM user_group_memberships WHERE group_id=?", (gid,))
+        for uid in selected & all_ids:
+            await db.execute(
+                "INSERT OR IGNORE INTO user_group_memberships(user_id, group_id) VALUES(?,?)",
+                (uid, gid),
+            )
+        await db.commit()
+    finally:
+        await db.close()
+
+    return RedirectResponse(f"/admin/groups/{gid}", status_code=303)
+
+
 @router.post("/groups/{gid:int}/delete")
 async def admin_delete_group(request: Request, gid: int):
     if not is_admin(request):
