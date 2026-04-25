@@ -203,6 +203,64 @@ async def signin_different(
     return RedirectResponse(f"/?{params}", status_code=303)
 
 
+@router.get("/rename", response_class=HTMLResponse)
+async def rename_form(request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return RedirectResponse("/")
+    lang = request.session.get("lang", "en")
+    db = await get_db()
+    try:
+        async with db.execute("SELECT name FROM users WHERE id=?", (user_id,)) as cur:
+            row = await cur.fetchone()
+    finally:
+        await db.close()
+    if not row:
+        request.session.clear()
+        return RedirectResponse("/")
+    return templates.TemplateResponse(
+        "home/rename.html",
+        {"request": request, "lang": lang, "current_name": row["name"]},
+    )
+
+
+@router.post("/rename")
+async def rename_submit(request: Request, new_name: str = Form(...)):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return RedirectResponse("/")
+    name = normalize_name(new_name)
+    if not name or len(name) < 2:
+        return RedirectResponse("/rename")
+
+    db = await get_db()
+    try:
+        async with db.execute(
+            "SELECT id FROM users WHERE name=? AND id != ?", (name, user_id)
+        ) as cur:
+            existing = await cur.fetchone()
+        if existing:
+            lang = request.session.get("lang", "en")
+            async with db.execute("SELECT name FROM users WHERE id=?", (user_id,)) as cur:
+                cur_row = await cur.fetchone()
+            return templates.TemplateResponse(
+                "home/rename.html",
+                {
+                    "request": request,
+                    "lang": lang,
+                    "current_name": cur_row["name"] if cur_row else "",
+                    "error": "That name is already taken.",
+                    "attempted": name,
+                },
+            )
+        await db.execute("UPDATE users SET name=? WHERE id=?", (name, user_id))
+        await db.commit()
+        request.session["user_name"] = name
+    finally:
+        await db.close()
+    return RedirectResponse("/", status_code=303)
+
+
 @router.post("/signout")
 async def signout(request: Request):
     request.session.clear()

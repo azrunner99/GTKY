@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<article style="margin-top:2rem;">
+  <h3 style="text-align:center;">{{ 'Cambiar mi nombre' if lang == 'es' else 'Edit my name' }}</h3>
+  {% if error %}<p style="color:var(--pico-del-color); text-align:center;">{{ error }}</p>{% endif %}
+  <form method="post" action="/rename">
+    <input type="text" name="new_name" required autofocus value="{{ attempted or current_name }}">
+    <div style="display:flex; gap:0.75rem;">
+      <button type="submit" style="flex:1;">{{ 'Guardar' if lang == 'es' else 'Save' }}</button>
+      <a href="/" role="button" class="outline" style="flex:1; text-align:center;">
+        {{ 'Cancelar' if lang == 'es' else 'Cancel' }}
+      </a>
+    </div>
+  </form>
+</article>
+{% endblock %}

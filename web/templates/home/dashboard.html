@@ -8,7 +8,11 @@
     <div class="avatar" style="background:var(--pico-primary-background);">{{ user.name[0].upper() }}</div>
   {% endif %}
   <div>
-    <h2 style="margin:0;">{{ 'Hola' if lang == 'es' else 'Hey' }}, {{ user.name }}!</h2>
+    <h2 style="margin:0;">{{ 'Hola' if lang == 'es' else 'Hey' }}, {{ user.name }}!
+      <a href="/rename" style="font-size:0.7em; font-weight:400; margin-left:0.5rem;">
+        {{ 'editar' if lang == 'es' else 'edit' }}
+      </a>
+    </h2>
     <a href="/profile/{{ user_id }}" style="font-size:0.85rem;">{{ 'Ver perfil' if lang == 'es' else 'View profile' }}</a>
   </div>
 </div>
