@@ -1,13 +1,7 @@
 {% extends "base.html" %}
 {% block title %}GTKY – Quiz Results{% endblock %}
 {% block content %}
-<div style="text-align:center; padding:2rem 0;">
-  {% if subject.photo_filename %}
-    <div class="avatar avatar-lg" style="margin:0 auto 0.75rem;"><img src="/static/photos/{{ subject.photo_filename }}" alt="{{ subject.name }}"></div>
-  {% else %}
-    <div class="avatar avatar-lg" style="margin:0 auto 0.75rem; background:var(--pico-primary-background);">{{ subject.name[0].upper() }}</div>
-  {% endif %}
-
+<div style="text-align:center; padding:2rem 0 1rem;">
   <h2>{{ 'Quiz terminado' if lang == 'es' else 'Quiz complete' }}</h2>
   <p style="font-size:1.1rem;">
     {{ 'Puntuación:' if lang == 'es' else 'Score:' }}
@@ -25,11 +19,55 @@
       {{ 'Sigue aprendiendo.' if lang == 'es' else 'Keep learning!' }}
     {% endif %}
   </p>
+</div>
 
-  <div style="display:grid; gap:0.75rem; margin-top:1.5rem;">
-    <a href="/quiz" role="button">{{ 'Otro quiz' if lang == 'es' else 'Quiz someone else' }}</a>
-    <a href="/connections" role="button" class="outline secondary">{{ 'Ver conexiones' if lang == 'es' else 'See connections' }}</a>
-    <a href="/" role="button" class="outline">{{ 'Inicio' if lang == 'es' else 'Home' }}</a>
+{% if breakdown %}
+<h3 style="font-size:0.95rem; font-weight:600; color:var(--pico-muted-color); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.75rem;">
+  {{ 'Por persona' if lang == 'es' else 'By person' }}
+</h3>
+<div style="display:flex; flex-direction:column; gap:0.5rem; margin-bottom:1.5rem;">
+  {% for s in breakdown %}
+  <div style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem 0.75rem; background:var(--pico-card-background-color); border-radius:0.5rem;">
+    {% if s.photo_filename %}
+      <img src="/static/photos/{{ s.photo_filename }}" alt="{{ s.name }}"
+           style="width:36px; height:36px; border-radius:50%; object-fit:cover; flex-shrink:0;">
+    {% else %}
+      <span style="display:inline-flex; width:36px; height:36px; border-radius:50%; background:var(--pico-primary-background); color:var(--pico-primary); align-items:center; justify-content:center; font-weight:700; font-size:0.9rem; flex-shrink:0;">{{ s.name[0].upper() }}</span>
+    {% endif %}
+    <span style="flex:1; font-weight:500;">{{ s.name }}</span>
+    <span style="font-size:0.85rem; color:var(--pico-muted-color);">{{ s.correct }}/{{ s.total }}</span>
+    <span style="font-size:0.85rem; font-weight:600;
+                 color:{% if s.pct >= 80 %}var(--pico-ins-color){% elif s.pct >= 50 %}var(--pico-color){% else %}var(--pico-del-color){% endif %};">
+      {{ s.pct }}%
+    </span>
   </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if suggest_subject %}
+<article style="margin-bottom:1.5rem;">
+  <p style="margin:0; font-size:0.9rem;">
+    {% if lang == 'es' %}
+      ¿Aprender más sobre <strong>{{ suggest_subject.name }}</strong>? Solo acertaste el {{ suggest_subject.pct }}%.
+    {% else %}
+      Want to learn more about <strong>{{ suggest_subject.name }}</strong>? You only got {{ suggest_subject.pct }}% right.
+    {% endif %}
+  </p>
+  <a href="/quiz/start" role="button" class="outline" style="margin-top:0.75rem; width:100%;"
+     hx-boost="false"
+     onclick="document.getElementById('suggest-form').submit(); return false;">
+    {{ 'Hacer quiz de ' + suggest_subject.name if lang == 'es' else 'Quiz ' + suggest_subject.name + ' again' }}
+  </a>
+  <form id="suggest-form" method="post" action="/quiz/start" style="display:none;">
+    <input type="hidden" name="subject_ids" value="{{ suggest_subject.subject_id }}">
+  </form>
+</article>
+{% endif %}
+
+<div style="display:grid; gap:0.75rem;">
+  <a href="/quiz" role="button">{{ 'Otro quiz' if lang == 'es' else 'Quiz someone else' }}</a>
+  <a href="/connections" role="button" class="outline secondary">{{ 'Ver conexiones' if lang == 'es' else 'See connections' }}</a>
+  <a href="/" role="button" class="outline">{{ 'Inicio' if lang == 'es' else 'Home' }}</a>
 </div>
 {% endblock %}
