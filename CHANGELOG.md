@@ -2,6 +2,8 @@
 
 ## Web UX Fix Pack
 
+- **W2.4 — `for_quiz` centralized** — Added `for_quiz(template, subject_name)` to `services/question_phrasing.py`, mirroring Android `util/QuestionPhrasing.kt:forQuiz`. Inline `template.replace("[NAME]", ...)` calls in `routers/quiz.py` (`quiz_question`) and `routers/admin.py` (`admin_user_answers`) now route through it.
+
 - **W2.3 — Dashboard ready-count** — Quiz button on the dashboard now shows "(N ready)" when other users meet the threshold, or a disabled "wait for others" state when the viewer is unlocked but nobody else is ready yet. Locked state unchanged (🔒). `home.py` computes `ready_count` only when the viewer is unlocked (skips the query when not).
 
 - **W2.2 — Survey progress: category + milestone** — Added a one-time milestone banner ("🎉 Quiz unlocked!") rendered above the question card on the page the user sees after crossing `QUIZ_UNLOCK_THRESHOLD`. The category badge was already present; redundant inline milestone text in the progress row removed to avoid duplication.

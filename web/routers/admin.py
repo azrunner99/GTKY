@@ -1,5 +1,6 @@
 import json
 from fastapi import APIRouter, Request, Form
+from services.question_phrasing import for_quiz
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from config import TEMPLATES_DIR, PHOTOS_DIR
@@ -136,7 +137,7 @@ async def admin_user_answers(request: Request, uid: int):
                 answer_display = r["answer_en"]
 
             template = r["template_es"] if lang == "es" else r["template_en"]
-            question_text = template.replace("[NAME]", user["name"])
+            question_text = for_quiz(template, user["name"])
             answers.append({
                 "question": question_text,
                 "answer": answer_display,

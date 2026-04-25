@@ -106,6 +106,14 @@ def for_survey_es(template: str) -> str:
     return r
 
 
+def for_quiz(template: str, subject_name: str) -> str:
+    """Render a question template with the subject's name substituted in.
+
+    Mirrors Android util/QuestionPhrasing.kt:forQuiz.
+    """
+    return template.replace("[NAME]", subject_name)
+
+
 def category_label(category: str, lang: str) -> str:
     if lang != "es":
         return category

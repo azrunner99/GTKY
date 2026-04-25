@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from config import TEMPLATES_DIR, QUIZ_UNLOCK_THRESHOLD
 from database import get_db
-from services.question_phrasing import category_label
+from services.question_phrasing import for_quiz, category_label
 
 router = APIRouter(prefix="/quiz")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -139,7 +139,7 @@ async def quiz_question(request: Request):
             subject = await cur.fetchone()
 
         template = q["template_es"] if lang == "es" else q["template_en"]
-        question_text = template.replace("[NAME]", subject["name"])
+        question_text = for_quiz(template, subject["name"])
         cat = category_label(q["category"], lang)
 
         return templates.TemplateResponse(
