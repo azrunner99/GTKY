@@ -29,12 +29,14 @@ async def photo_prompt_get(request: Request):
         if row["photo_filename"] or row["photo_prompt_opt_out"]:
             return RedirectResponse("/", status_code=303)
         show_opt_out = row["photo_prompt_count"] >= PHOTO_PROMPT_CAP
+        upload_error = request.session.pop("photo_upload_error", None)
         return templates.TemplateResponse(
             "profile/photo_prompt.html",
             {
                 "request": request,
                 "lang": lang,
                 "show_opt_out": show_opt_out,
+                "upload_error": upload_error,
             },
         )
     finally:

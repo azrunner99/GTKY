@@ -2,7 +2,7 @@ import io
 from fastapi import APIRouter, Form, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from config import TEMPLATES_DIR, PHOTOS_DIR, PHOTO_MAX_SIZE, PHOTO_QUALITY
+from config import TEMPLATES_DIR, PHOTOS_DIR, PHOTO_MAX_SIZE, PHOTO_QUALITY, PHOTO_MAX_UPLOAD_BYTES
 from database import get_db
 
 router = APIRouter(prefix="/profile")
@@ -55,6 +55,7 @@ async def profile(request: Request, user_id: int):
             them_correct = row["correct"]
 
         is_own = viewer_id == user_id
+        upload_error = request.session.pop("photo_upload_error", None)
 
         return templates.TemplateResponse(
             "profile/profile.html",
@@ -68,10 +69,15 @@ async def profile(request: Request, user_id: int):
                 "them_correct": them_correct,
                 "them_total": them_total,
                 "is_own": is_own,
+                "upload_error": upload_error,
             },
         )
     finally:
         await db.close()
+
+
+def _safe_dest(redirect_to: str, user_id: int) -> str:
+    return redirect_to if redirect_to.startswith("/") and not redirect_to.startswith("//") else f"/profile/{user_id}"
 
 
 @router.post("/photo", response_class=HTMLResponse)
@@ -84,10 +90,50 @@ async def upload_photo(
     if not user_id:
         return RedirectResponse("/")
 
+    dest = _safe_dest(redirect_to, user_id)
+
+    # Content-type sanity check before reading body.
+    content_type = (photo.content_type or "").lower()
+    if not content_type.startswith("image/"):
+        request.session["photo_upload_error"] = "invalid_image"
+        return RedirectResponse(dest, status_code=303)
+
+    # Read in chunks to enforce size cap.
+    chunks = []
+    total = 0
+    while True:
+        chunk = await photo.read(64 * 1024)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > PHOTO_MAX_UPLOAD_BYTES:
+            request.session["photo_upload_error"] = "too_large"
+            return RedirectResponse(dest, status_code=303)
+        chunks.append(chunk)
+    data = b"".join(chunks)
+
+    if not data:
+        request.session["photo_upload_error"] = "empty"
+        return RedirectResponse(dest, status_code=303)
+
     try:
-        from PIL import Image
-        data = await photo.read()
+        from PIL import Image, UnidentifiedImageError
+        try:
+            img = Image.open(io.BytesIO(data))
+            img.verify()
+        except (UnidentifiedImageError, Exception):
+            request.session["photo_upload_error"] = "invalid_image"
+            return RedirectResponse(dest, status_code=303)
+
+        # verify() consumes the stream — re-open for processing.
         img = Image.open(io.BytesIO(data)).convert("RGB")
+
+        # Center-crop to square before resize, matching Android PhotoStorage behavior.
+        w, h = img.size
+        side = min(w, h)
+        left = (w - side) // 2
+        top = (h - side) // 2
+        img = img.crop((left, top, left + side, top + side))
         img.thumbnail(PHOTO_MAX_SIZE)
 
         filename = f"user_{user_id}.jpg"
@@ -105,7 +151,6 @@ async def upload_photo(
     except Exception:
         pass
 
-    dest = redirect_to if redirect_to.startswith("/") and not redirect_to.startswith("//") else f"/profile/{user_id}"
     return RedirectResponse(dest, status_code=303)
 
 

@@ -2,6 +2,8 @@
 
 ## Web UX Fix Pack
 
+- **W4.3 — Upload validation** — `upload_photo` now rejects non-image content types up front, caps total upload size at 10 MB (read in 64 KB chunks), and uses PIL's `verify()` to catch malformed images before processing. Adds a center-crop step to match Android's `PhotoStorage` behavior. User-visible error messages ("Photo too large" / "isn't a valid image") are set as a session flag, popped in the photo-prompt and profile GET handlers, and rendered in both templates. `PHOTO_MAX_UPLOAD_BYTES` constant in `config.py`.
+
 - **W4.2 — Origin check (CSRF)** — New `middleware/csrf.py` rejects POST/PUT/PATCH/DELETE requests whose `Origin` (or fallback `Referer`) header doesn't match the request's host. Combined with `SameSite=lax` on the session cookie (now set explicitly in `main.py`), this blocks the realistic CSRF vectors without the complexity of a synchronizer-token pattern. CLI users testing with curl need to pass `-H "Origin: http://localhost:8000"`. Verified: cross-origin POST → 403, no-origin POST → 403, same-origin POST → 303, GET → 200.
 
 - **W4.1 — Idle timeout** — New `middleware/idle_timeout.py` tracks `last_active` per session. After 5 minutes of inactivity, the session is cleared and the user lands on the welcome screen on their next request. Static-asset requests (`/static/...`) don't count as activity, so a tab loading photos in the background doesn't keep a stale session alive forever. `IDLE_TIMEOUT_SECONDS` constant in `config.py`. Middleware registered after `SessionMiddleware` so the session is decoded before the idle check runs.

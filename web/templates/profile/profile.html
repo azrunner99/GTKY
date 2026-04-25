@@ -20,6 +20,16 @@
     {% endif %}
   </p>
 
+  {% if upload_error == 'too_large' %}
+  <p style="color:var(--pico-del-color); font-size:0.85rem; margin-top:0.5rem;">
+    {{ 'La foto es muy grande (máximo 10 MB).' if lang == 'es' else 'Photo too large (10 MB max).' }}
+  </p>
+  {% elif upload_error == 'invalid_image' or upload_error == 'empty' %}
+  <p style="color:var(--pico-del-color); font-size:0.85rem; margin-top:0.5rem;">
+    {{ 'El archivo no es una imagen válida.' if lang == 'es' else "That file isn't a valid image." }}
+  </p>
+  {% endif %}
+
   {% if is_own %}
   <div style="margin-top:1rem;">
     <form method="post" action="/profile/photo" enctype="multipart/form-data"
