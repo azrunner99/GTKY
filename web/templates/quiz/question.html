@@ -7,17 +7,20 @@
 </div>
 <progress value="{{ question_num - 1 }}" max="{{ total }}"></progress>
 
-<div style="text-align:center; margin: 1rem 0;">
+<div style="text-align:center; margin-bottom:1.5rem;">
   {% if subject.photo_filename %}
-    <div class="avatar avatar-lg" style="margin:0 auto 0.5rem;">
+    <div class="avatar avatar-lg" style="margin:0 auto 0.75rem; width:96px; height:96px; font-size:2.5rem;">
       <img src="/static/photos/{{ subject.photo_filename }}" alt="{{ subject.name }}">
     </div>
   {% else %}
-    <div class="avatar avatar-lg" style="margin:0 auto 0.5rem; background:var(--pico-primary-background);">
+    <div class="avatar avatar-lg" style="margin:0 auto 0.75rem; width:96px; height:96px; font-size:2.5rem; background:var(--pico-primary-background); color:var(--pico-primary);">
       {{ subject.name[0].upper() }}
     </div>
   {% endif %}
-  <p style="margin:0; font-weight:600;">{{ subject.name }}</p>
+  <h3 style="margin:0; font-size:1.4rem;">{{ subject.name }}</h3>
+  <p style="font-size:0.75rem; color:var(--pico-muted-color); margin:0.25rem 0 0;">
+    {{ 'Quiz sobre esta persona' if lang == 'es' else 'Quiz about them' }}
+  </p>
 </div>
 
 <div class="card-question">
