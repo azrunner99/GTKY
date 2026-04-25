@@ -2,6 +2,8 @@
 
 ## Web UX Fix Pack
 
+- **W2.2 — Survey progress: category + milestone** — Added a one-time milestone banner ("🎉 Quiz unlocked!") rendered above the question card on the page the user sees after crossing `QUIZ_UNLOCK_THRESHOLD`. The category badge was already present; redundant inline milestone text in the progress row removed to avoid duplication.
+
 - **W2.1 — Survey skip actually skips** — `survey_skip` now records the question ID in a session list (`skipped_question_ids`); `next_question` excludes both answered and skipped IDs via a dynamic SQL clause. Skip list capped at 50 entries to prevent cookie bloat. List is cleared when the user submits an answer, so skipped questions can resurface in a future round. Also added `user_id` to the shuffle seed (`0x474B5946 + user_id`) so two users no longer see questions in identical order.
 
 - **W1.8 — Rename from dashboard** — Added GET `/rename` and POST `/rename` routes to `auth.py`. The rename form normalizes the new name, checks uniqueness against other users, and updates the DB + session on success. A small "edit" link appears inline next to the dashboard greeting (`Hey, Alex! edit`). New `home/rename.html` template with prefilled input, save/cancel buttons, and error display.

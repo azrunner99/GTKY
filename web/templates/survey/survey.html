@@ -4,9 +4,7 @@
 <div class="progress-wrap">
   <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:0.25rem;">
     <span>{{ total_answered }} {{ 'respondidas' if lang == 'es' else 'answered' }}</span>
-    {% if just_unlocked %}
-      <span style="color:var(--pico-primary); font-weight:700;">{{ '¡Quiz desbloqueado!' if lang == 'es' else 'Quiz unlocked! 🎉' }}</span>
-    {% elif can_quit %}
+    {% if can_quit %}
       <span style="color:var(--pico-primary);">{{ '¡Sigue adelante!' if lang == 'es' else 'Keep going!' }}</span>
     {% else %}
       <span>{{ quiz_threshold - total_answered }} {{ 'para quiz' if lang == 'es' else 'to unlock quiz' }}</span>
@@ -14,6 +12,16 @@
   </div>
   <progress value="{{ [total_answered, quiz_threshold] | min }}" max="{{ quiz_threshold }}"></progress>
 </div>
+
+{% if just_unlocked %}
+<div style="background:var(--pico-ins-background, #e8f5e9); border-left:4px solid var(--pico-primary); padding:0.75rem 1rem; border-radius:0.25rem; margin-bottom:1rem;">
+  <strong>🎉 {{ '¡Quiz desbloqueado!' if lang == 'es' else 'Quiz unlocked!' }}</strong>
+  <p style="margin:0.25rem 0 0; font-size:0.85rem;">
+    {{ 'Sigue respondiendo o toca Quiz cuando quieras.' if lang == 'es'
+       else "Keep going, or tap Quiz when you're ready." }}
+  </p>
+</div>
+{% endif %}
 
 <div class="card-question">
   <span class="category-badge">{{ category }}</span>
