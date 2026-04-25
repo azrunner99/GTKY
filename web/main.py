@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from config import SECRET_KEY, PHOTOS_DIR, STATIC_DIR
@@ -20,6 +21,27 @@ async def lifespan(app: FastAPI):
     yield
 
 
+class SessionUserContextMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        user_id = request.session.get("user_id") if "session" in request.scope else None
+        request.state.session_user_photo = None
+        request.state.session_user_name = None
+        if user_id:
+            from database import get_db
+            db = await get_db()
+            try:
+                async with db.execute(
+                    "SELECT name, photo_filename FROM users WHERE id=?", (user_id,)
+                ) as cur:
+                    row = await cur.fetchone()
+                if row:
+                    request.state.session_user_photo = row["photo_filename"]
+                    request.state.session_user_name = row["name"]
+            finally:
+                await db.close()
+        return await call_next(request)
+
+
 app = FastAPI(lifespan=lifespan, title="GTKY")
 app.add_middleware(
     SessionMiddleware,
@@ -28,6 +50,7 @@ app.add_middleware(
     session_cookie="gtky_session",
     https_only=False,
 )
+app.add_middleware(SessionUserContextMiddleware)
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 

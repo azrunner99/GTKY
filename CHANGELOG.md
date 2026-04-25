@@ -2,6 +2,8 @@
 
 ## Web UX Fix Pack
 
+- **W3.6 — Top nav avatar** — Signed-in nav now shows a 32px circular avatar of the current user (photo or initials fallback) in the right-hand corner, linking to the user's own profile. Implemented via `SessionUserContextMiddleware` in `main.py` which populates `request.state.session_user_photo` and `request.state.session_user_name` on every signed-in request; `base.html` reads these from `request.state` directly — no handler changes required.
+
 - **W3.5 — Admin group member assignment** — New `/admin/groups/{gid}` detail page lets admins check/uncheck users to assign group membership. POSTs to `/admin/groups/{gid}/members` which rewrites the group's memberships to match the checked set (delete all + re-insert selected). Group names in the admin groups list are now links to the detail page.
 
 - **W3.4 — Admin groups management page** — New `/admin/groups` route with create form, list of existing groups with member counts and creation dates, and per-group delete with confirmation. Linked from the main admin page via a "Manage groups" button above the user list.

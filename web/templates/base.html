@@ -46,11 +46,24 @@
       <a href="/users">{{ 'Usuarios' if lang == 'es' else 'Users' }}</a>
       <a href="/groups">{{ 'Grupos' if lang == 'es' else 'Groups' }}</a>
     </div>
-    <div class="lang-toggle">
-      <form method="post" action="/set-lang">
-        <input type="hidden" name="lang" value="{{ 'en' if lang == 'es' else 'es' }}">
-        <button type="submit" class="outline secondary">{{ 'EN' if lang == 'es' else 'ES' }}</button>
-      </form>
+    <div style="display:flex; align-items:center; gap:0.5rem;">
+      <div class="lang-toggle">
+        <form method="post" action="/set-lang">
+          <input type="hidden" name="lang" value="{{ 'en' if lang == 'es' else 'es' }}">
+          <button type="submit" class="outline secondary">{{ 'EN' if lang == 'es' else 'ES' }}</button>
+        </form>
+      </div>
+      {% if request.state.session_user_photo %}
+      <a href="/profile/{{ request.session.get('user_id') }}" title="{{ 'Tu perfil' if lang == 'es' else 'Your profile' }}">
+        <img src="/static/photos/{{ request.state.session_user_photo }}" alt=""
+             style="width:32px; height:32px; border-radius:50%; object-fit:cover; display:block;">
+      </a>
+      {% elif request.state.session_user_name %}
+      <a href="/profile/{{ request.session.get('user_id') }}" title="{{ 'Tu perfil' if lang == 'es' else 'Your profile' }}"
+         style="display:inline-flex; width:32px; height:32px; border-radius:50%; background:var(--pico-primary-background); color:var(--pico-primary); align-items:center; justify-content:center; font-weight:700; text-decoration:none;">
+        {{ request.state.session_user_name[0].upper() }}
+      </a>
+      {% endif %}
     </div>
   </nav>
   {% endif %}
