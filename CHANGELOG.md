@@ -2,6 +2,8 @@
 
 ## Web UX Fix Pack
 
+- **W4.2 — Origin check (CSRF)** — New `middleware/csrf.py` rejects POST/PUT/PATCH/DELETE requests whose `Origin` (or fallback `Referer`) header doesn't match the request's host. Combined with `SameSite=lax` on the session cookie (now set explicitly in `main.py`), this blocks the realistic CSRF vectors without the complexity of a synchronizer-token pattern. CLI users testing with curl need to pass `-H "Origin: http://localhost:8000"`. Verified: cross-origin POST → 403, no-origin POST → 403, same-origin POST → 303, GET → 200.
+
 - **W4.1 — Idle timeout** — New `middleware/idle_timeout.py` tracks `last_active` per session. After 5 minutes of inactivity, the session is cleared and the user lands on the welcome screen on their next request. Static-asset requests (`/static/...`) don't count as activity, so a tab loading photos in the background doesn't keep a stale session alive forever. `IDLE_TIMEOUT_SECONDS` constant in `config.py`. Middleware registered after `SessionMiddleware` so the session is decoded before the idle check runs.
 
 - **W3.7 — Active Users ready-state** — `/users` now shows "Still setting up (N/8)" for users below the quiz threshold and hides the Quiz button on those rows. Eligible users show the "N answered" label and a working Quiz button. The hidden-form field name updated from `subject_id` to `subject_ids` to match the multi-subject quiz API from W2.6.
