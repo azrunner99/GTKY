@@ -157,6 +157,19 @@ async def admin_user_answers(request: Request, uid: int):
         await db.close()
 
 
+@router.post("/groups/{gid:int}/delete")
+async def admin_delete_group(request: Request, gid: int):
+    if not is_admin(request):
+        return RedirectResponse("/admin")
+    db = await get_db()
+    try:
+        await db.execute("DELETE FROM groups WHERE id=?", (gid,))
+        await db.commit()
+    finally:
+        await db.close()
+    return RedirectResponse("/admin/groups", status_code=303)
+
+
 @router.post("/users/{uid:int}/delete")
 async def delete_user(request: Request, uid: int):
     if not is_admin(request):

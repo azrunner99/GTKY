@@ -3,15 +3,10 @@
 {% block content %}
 <h2>{{ 'Grupos' if lang == 'es' else 'Groups' }}</h2>
 
-<details style="margin-bottom:1.5rem;">
-  <summary>{{ 'Crear grupo' if lang == 'es' else 'Create a group' }}</summary>
-  <form method="post" action="/groups/create" style="margin-top:0.75rem;">
-    <div style="display:flex; gap:0.5rem;">
-      <input type="text" name="name" placeholder="{{ 'Nombre del grupo' if lang == 'es' else 'Group name' }}" required style="flex:1; margin:0;">
-      <button type="submit">{{ 'Crear' if lang == 'es' else 'Create' }}</button>
-    </div>
-  </form>
-</details>
+<p style="font-size:0.85rem; color:var(--pico-muted-color); margin-top:1rem;">
+  {{ 'El admin crea los grupos. Únete a los que existan.' if lang == 'es'
+     else 'The admin creates groups. Join any that exist.' }}
+</p>
 
 {% if groups %}
   {% for g in groups %}

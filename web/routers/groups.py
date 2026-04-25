@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from config import TEMPLATES_DIR
 from database import get_db
+from routers.admin import is_admin
 
 router = APIRouter(prefix="/groups")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -44,20 +45,17 @@ async def create_group(request: Request, name: str = Form(...)):
     user_id = request.session.get("user_id")
     if not user_id:
         return RedirectResponse("/")
+    if not is_admin(request):
+        return RedirectResponse("/groups", status_code=303)
     name = name.strip()
     if not name:
-        return RedirectResponse("/groups")
+        return RedirectResponse("/admin/groups", status_code=303)
 
     db = await get_db()
     try:
         try:
-            async with db.execute(
-                "INSERT INTO groups(name, created_by) VALUES(?,?)", (name, user_id)
-            ) as cur:
-                group_id = cur.lastrowid
             await db.execute(
-                "INSERT INTO user_group_memberships(user_id, group_id) VALUES(?,?)",
-                (user_id, group_id),
+                "INSERT INTO groups(name, created_by) VALUES(?,?)", (name, user_id)
             )
             await db.commit()
         except Exception:
@@ -65,7 +63,7 @@ async def create_group(request: Request, name: str = Form(...)):
     finally:
         await db.close()
 
-    return RedirectResponse("/groups", status_code=303)
+    return RedirectResponse("/admin/groups", status_code=303)
 
 
 @router.post("/{group_id:int}/join")
