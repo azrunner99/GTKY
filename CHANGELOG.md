@@ -2,6 +2,8 @@
 
 ## Web UX Fix Pack
 
+- **W4.5 — Health check + README** — New `GET /health` returns `{"ok": true, "uptime_seconds": N}` for monitoring tools; excluded from OpenAPI schema. `web/README.md` refreshed with a Configuration section (`SESSION_SECRET` env var), an Operations section (idle timeout, CSRF, photo limits, health check), and an expanded Features list reflecting everything that landed in W1–W4.
+
 - **W4.4 — Stable session secret** — `config.py` now exports `SESSION_SECRET` via `load_session_secret()`: reads from `SESSION_SECRET` env var first, then falls back to a `.session_secret` file on disk (auto-generated with `secrets.token_urlsafe(48)` on first launch, `chmod 0600`). Existing sessions survive restarts; only a deliberate env override or file deletion rotates the secret. `.session_secret` added to `web/.gitignore`. `main.py` logs at startup which source was used.
 
 - **W4.3 — Upload validation** — `upload_photo` now rejects non-image content types up front, caps total upload size at 10 MB (read in 64 KB chunks), and uses PIL's `verify()` to catch malformed images before processing. Adds a center-crop step to match Android's `PhotoStorage` behavior. User-visible error messages ("Photo too large" / "isn't a valid image") are set as a session flag, popped in the photo-prompt and profile GET handlers, and rendered in both templates. `PHOTO_MAX_UPLOAD_BYTES` constant in `config.py`.
