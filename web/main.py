@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
+from middleware.idle_timeout import IdleTimeoutMiddleware
 
 from config import SECRET_KEY, PHOTOS_DIR, STATIC_DIR
 from database import init_db
@@ -50,6 +51,7 @@ app.add_middleware(
     session_cookie="gtky_session",
     https_only=False,
 )
+app.add_middleware(IdleTimeoutMiddleware)
 app.add_middleware(SessionUserContextMiddleware)
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")

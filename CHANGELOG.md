@@ -2,6 +2,8 @@
 
 ## Web UX Fix Pack
 
+- **W4.1 — Idle timeout** — New `middleware/idle_timeout.py` tracks `last_active` per session. After 5 minutes of inactivity, the session is cleared and the user lands on the welcome screen on their next request. Static-asset requests (`/static/...`) don't count as activity, so a tab loading photos in the background doesn't keep a stale session alive forever. `IDLE_TIMEOUT_SECONDS` constant in `config.py`. Middleware registered after `SessionMiddleware` so the session is decoded before the idle check runs.
+
 - **W3.7 — Active Users ready-state** — `/users` now shows "Still setting up (N/8)" for users below the quiz threshold and hides the Quiz button on those rows. Eligible users show the "N answered" label and a working Quiz button. The hidden-form field name updated from `subject_id` to `subject_ids` to match the multi-subject quiz API from W2.6.
 
 - **W3.6 — Top nav avatar** — Signed-in nav now shows a 32px circular avatar of the current user (photo or initials fallback) in the right-hand corner, linking to the user's own profile. Implemented via `SessionUserContextMiddleware` in `main.py` which populates `request.state.session_user_photo` and `request.state.session_user_name` on every signed-in request; `base.html` reads these from `request.state` directly — no handler changes required.
