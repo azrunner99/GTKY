@@ -2,6 +2,8 @@
 
 ## Web UX Fix Pack
 
+- **W3.2 — Photo prompt page** — New `/photo-prompt` page shown after sign-in, up to 3 times per user. Uses `<input type="file" accept="image/*" capture="user">` so mobile browsers open the device camera directly; desktop gets a file picker. The count is incremented server-side before rendering the page so force-quit mid-prompt still counts toward the cap. On the third prompt, a "Never ask again" button appears and sets `photo_prompt_opt_out = 1`. Uploading a photo naturally stops further prompts via the existing `photo_filename IS NOT NULL` check. `upload_photo` now honors a safe `redirect_to` form field so the prompt page returns users to `/` after a successful upload. Implemented in `routers/photo_prompt.py`; registered alongside `auth` in `main.py`.
+
 - **W3.1 — Photo prompt schema** — Added `photo_prompt_count` and `photo_prompt_opt_out` columns to the `users` table via idempotent `ALTER TABLE` migration in `init_db`. Helper `_add_column_if_missing` checks `PRAGMA table_info` before altering to ensure the migration is safe on both fresh and existing databases.
 
 - **W2.9 — Connections page rebuilt with scope toggle** — Replaced the two-table "my scores / who knows me" layout with a single scrollable list and a Mine / Everyone scope toggle. "Mine" shows every person you have quiz history with in either direction, with both directional scores inline (You → N/M · → You N/M), sorted by mutual average, each row linking to their profile. "Everyone" shows pair rows with dual avatars and an aggregated mutual score across all quiz activity in the group. Empty states explain how to earn connections. Bilingual EN/ES throughout. Replaces the old `my_scores`/`their_scores` template variables.

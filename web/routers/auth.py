@@ -8,6 +8,23 @@ from fastapi.templating import Jinja2Templates
 from config import TEMPLATES_DIR
 from database import get_db
 
+PHOTO_PROMPT_CAP = 3
+
+
+async def should_show_photo_prompt(db, user_id: int) -> bool:
+    async with db.execute(
+        "SELECT photo_filename, photo_prompt_count, photo_prompt_opt_out FROM users WHERE id=?",
+        (user_id,),
+    ) as cur:
+        row = await cur.fetchone()
+    if not row:
+        return False
+    if row["photo_filename"]:
+        return False
+    if row["photo_prompt_opt_out"]:
+        return False
+    return row["photo_prompt_count"] < PHOTO_PROMPT_CAP
+
 router = APIRouter()
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
@@ -108,10 +125,18 @@ async def signin(
                 row = await cur.fetchone()
             if not row:
                 return RedirectResponse("/?mode=returning", status_code=303)
-            request.session["user_id"] = row["id"]
+            user_id = row["id"]
+            request.session["user_id"] = user_id
             request.session["user_name"] = row["name"]
             request.session.pop("lang", None)
             request.session.pop("skip_similar_for_name", None)
+            if await should_show_photo_prompt(db, user_id):
+                await db.execute(
+                    "UPDATE users SET photo_prompt_count = photo_prompt_count + 1 WHERE id=?",
+                    (user_id,),
+                )
+                await db.commit()
+                return RedirectResponse("/photo-prompt", status_code=303)
             return RedirectResponse("/", status_code=303)
 
         # New user flow
@@ -186,6 +211,13 @@ async def signin(
         request.session["user_id"] = user_id
         request.session["user_name"] = name
         request.session.pop("lang", None)
+        if await should_show_photo_prompt(db, user_id):
+            await db.execute(
+                "UPDATE users SET photo_prompt_count = photo_prompt_count + 1 WHERE id=?",
+                (user_id,),
+            )
+            await db.commit()
+            return RedirectResponse("/photo-prompt", status_code=303)
         return RedirectResponse("/", status_code=303)
     finally:
         await db.close()

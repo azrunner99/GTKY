@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}GTKY – Photo{% endblock %}
+{% block content %}
+<div style="max-width:420px; margin:2rem auto; text-align:center;">
+  <h2 style="margin-bottom:0.25rem;">
+    {{ '¡Sonríe!' if lang == 'es' else 'Smile!' }}
+  </h2>
+  <p style="color:var(--pico-muted-color); font-size:0.95rem; margin-bottom:1.5rem;">
+    {{ 'Una foto ayuda a que te reconozcan.' if lang == 'es'
+       else 'A photo helps people recognize you.' }}
+  </p>
+
+  <form method="post" action="/profile/photo" enctype="multipart/form-data"
+        style="display:flex; flex-direction:column; gap:0.75rem;">
+    <input type="hidden" name="redirect_to" value="/">
+    <input type="file" name="photo" accept="image/*" capture="user" required
+           style="font-size:0.9rem;">
+    <button type="submit" style="width:100%;">
+      {{ 'Subir foto' if lang == 'es' else 'Upload photo' }}
+    </button>
+  </form>
+
+  <form method="post" action="/photo-prompt/skip" style="margin-top:0.75rem;">
+    <button type="submit" class="outline secondary" style="width:100%;">
+      {{ 'Omitir' if lang == 'es' else 'Skip' }}
+    </button>
+  </form>
+
+  {% if show_opt_out %}
+  <form method="post" action="/photo-prompt/opt-out" style="margin-top:0.5rem;">
+    <button type="submit" style="width:100%; background:none; border:none; color:var(--pico-muted-color); padding:0.3rem; font-size:0.85rem; cursor:pointer; text-decoration:underline;">
+      {{ 'No preguntar de nuevo' if lang == 'es' else 'Never ask again' }}
+    </button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

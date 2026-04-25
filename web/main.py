@@ -9,7 +9,7 @@ from config import SECRET_KEY, PHOTOS_DIR, STATIC_DIR
 from database import init_db
 from seed import seed_questions
 
-from routers import auth, home, survey, quiz, connections, active_users, profile, groups, admin, about
+from routers import auth, home, survey, quiz, connections, active_users, profile, groups, admin, about, photo_prompt
 
 
 @asynccontextmanager
@@ -32,6 +32,7 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 app.include_router(auth.router)
+app.include_router(photo_prompt.router)
 app.include_router(home.router)
 app.include_router(survey.router)
 app.include_router(quiz.router)

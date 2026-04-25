@@ -1,5 +1,5 @@
 import io
-from fastapi import APIRouter, Request, UploadFile, File
+from fastapi import APIRouter, Form, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from config import TEMPLATES_DIR, PHOTOS_DIR, PHOTO_MAX_SIZE, PHOTO_QUALITY
@@ -75,7 +75,11 @@ async def profile(request: Request, user_id: int):
 
 
 @router.post("/photo", response_class=HTMLResponse)
-async def upload_photo(request: Request, photo: UploadFile = File(...)):
+async def upload_photo(
+    request: Request,
+    photo: UploadFile = File(...),
+    redirect_to: str = Form(default=""),
+):
     user_id = request.session.get("user_id")
     if not user_id:
         return RedirectResponse("/")
@@ -101,7 +105,8 @@ async def upload_photo(request: Request, photo: UploadFile = File(...)):
     except Exception:
         pass
 
-    return RedirectResponse(f"/profile/{user_id}", status_code=303)
+    dest = redirect_to if redirect_to.startswith("/") and not redirect_to.startswith("//") else f"/profile/{user_id}"
+    return RedirectResponse(dest, status_code=303)
 
 
 @router.post("/photo/delete", response_class=HTMLResponse)
