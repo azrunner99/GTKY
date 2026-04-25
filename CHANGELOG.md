@@ -2,6 +2,8 @@
 
 ## Web UX Fix Pack
 
+- **W2.9 — Connections page rebuilt with scope toggle** — Replaced the two-table "my scores / who knows me" layout with a single scrollable list and a Mine / Everyone scope toggle. "Mine" shows every person you have quiz history with in either direction, with both directional scores inline (You → N/M · → You N/M), sorted by mutual average, each row linking to their profile. "Everyone" shows pair rows with dual avatars and an aggregated mutual score across all quiz activity in the group. Empty states explain how to earn connections. Bilingual EN/ES throughout. Replaces the old `my_scores`/`their_scores` template variables.
+
 - **W2.8 — Per-subject results breakdown** — Quiz results page now shows a large score header (3rem, bold), then a per-person breakdown sorted best-first. Each row shows avatar, name, and correct/total color-coded green (≥80%), red (<50%), or muted otherwise. Each row links to that subject's profile. If any subject scored under 60%, a "Quiz yourself on $name next?" card appears with a one-tap re-quiz form. Handler and breakdown logic already landed in W2.6; this fix brings the template fully in line with the spec.
 
 - **W2.7 — Quiz subject hero** — Quiz question page now leads with a 96px avatar and the subject's name at 1.4rem, centered above the question card. Replaces the smaller inline subject indicator. Also adds a subtle "Quiz about them" / "Quiz sobre esta persona" label. Mirrors Android Fix 30.

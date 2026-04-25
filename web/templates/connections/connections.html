@@ -3,43 +3,86 @@
 {% block content %}
 <h2>{{ 'Conexiones' if lang == 'es' else 'Connections' }}</h2>
 
-{% if my_scores %}
-<h3 style="font-size:1rem; margin-bottom:0.5rem;">{{ 'Mis puntajes' if lang == 'es' else 'My quiz scores' }}</h3>
-{% for s in my_scores %}
-<div class="user-card">
-  {% if s.photo_filename %}
-    <div class="avatar"><img src="/static/photos/{{ s.photo_filename }}" alt="{{ s.name }}"></div>
-  {% else %}
-    <div class="avatar" style="background:var(--pico-primary-background);">{{ s.name[0].upper() }}</div>
-  {% endif %}
-  <div style="flex:1;">
-    <strong><a href="/profile/{{ s.id }}">{{ s.name }}</a></strong>
-    <div class="score-bar"><div class="score-fill" style="width:{{ s.pct }}%;"></div></div>
-    <div style="font-size:0.8rem; color:var(--pico-muted-color);">{{ s.correct }}/{{ s.quizzed }} · {{ s.pct }}%</div>
-  </div>
-  <a href="/quiz" role="button" class="outline" style="padding:0.3rem 0.8rem; font-size:0.8rem;">{{ 'Retry' }}</a>
+<div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+  <a href="/connections?scope=mine" role="button"
+     class="{{ '' if scope == 'mine' else 'outline' }}" style="flex:1; text-align:center; padding:0.4rem;">
+    {{ 'Mías' if lang == 'es' else 'Mine' }}
+  </a>
+  <a href="/connections?scope=everyone" role="button"
+     class="{{ '' if scope == 'everyone' else 'outline' }}" style="flex:1; text-align:center; padding:0.4rem;">
+    {{ 'Todas' if lang == 'es' else 'Everyone' }}
+  </a>
 </div>
-{% endfor %}
-{% else %}
-<p style="color:var(--pico-muted-color);">{{ 'Todavía no has tomado ningún quiz.' if lang == 'es' else "You haven't taken any quizzes yet." }}</p>
-{% endif %}
 
-{% if their_scores %}
-<h3 style="font-size:1rem; margin: 1.5rem 0 0.5rem;">{{ '¿Quién me conoce?' if lang == 'es' else 'Who knows me?' }}</h3>
-{% for s in their_scores %}
-<div class="user-card">
-  {% if s.photo_filename %}
-    <div class="avatar"><img src="/static/photos/{{ s.photo_filename }}" alt="{{ s.name }}"></div>
-  {% else %}
-    <div class="avatar" style="background:var(--pico-primary-background);">{{ s.name[0].upper() }}</div>
-  {% endif %}
-  <div style="flex:1;">
-    <strong>{{ s.name }}</strong>
-    <div class="score-bar"><div class="score-fill" style="width:{{ s.pct }}%;"></div></div>
-    <div style="font-size:0.8rem; color:var(--pico-muted-color);">{{ s.correct }}/{{ s.quizzed }} · {{ s.pct }}%</div>
+{% if not connections %}
+<article>
+  <p style="text-align:center;">
+    {% if scope == 'mine' %}
+      {{ 'Aún no hay conexiones. Toma un quiz o espera a que alguien tome uno sobre ti.' if lang == 'es'
+         else "No connections yet. Take a quiz, or wait for someone to take one about you." }}
+    {% else %}
+      {{ 'Aún no hay actividad. Empieza un quiz para crear conexiones.' if lang == 'es'
+         else 'No activity yet. Start a quiz to create connections.' }}
+    {% endif %}
+  </p>
+  <div style="text-align:center;">
+    <a href="/quiz" role="button" class="outline">{{ 'Tomar un Quiz' if lang == 'es' else 'Take a Quiz' }}</a>
   </div>
-</div>
-{% endfor %}
+</article>
+{% elif scope == 'mine' %}
+  {% for c in connections %}
+  <a href="/profile/{{ c.id }}" style="text-decoration:none; color:inherit;">
+    <div class="user-card">
+      {% if c.photo_filename %}
+        <img src="/static/photos/{{ c.photo_filename }}" alt=""
+             style="width:40px; height:40px; border-radius:50%; object-fit:cover;">
+      {% else %}
+        <span style="display:inline-flex; width:40px; height:40px; border-radius:50%; background:var(--pico-primary-background); color:var(--pico-primary); align-items:center; justify-content:center; font-weight:700;">{{ c.name[0].upper() }}</span>
+      {% endif %}
+      <div style="flex:1;">
+        <strong>{{ c.name }}</strong>
+        <div style="font-size:0.8rem; color:var(--pico-muted-color);">
+          {% if c.my_total %}
+            {{ 'Tú →' if lang == 'es' else 'You →' }} {{ c.my_correct }}/{{ c.my_total }} ({{ c.my_pct }}%)
+          {% else %}
+            {{ 'No los has cuestionado' if lang == 'es' else "You haven't quizzed them" }}
+          {% endif %}
+          ·
+          {% if c.their_total %}
+            {{ '→ Tú' if lang == 'es' else '→ You' }} {{ c.their_correct }}/{{ c.their_total }} ({{ c.their_pct }}%)
+          {% else %}
+            {{ 'No te han cuestionado' if lang == 'es' else "Hasn't quizzed you" }}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+{% else %}
+  {% for c in connections %}
+  <div class="user-card">
+    <div style="display:flex; gap:0.25rem;">
+      {% if c.user_a.photo_filename %}
+        <img src="/static/photos/{{ c.user_a.photo_filename }}" alt=""
+             style="width:32px; height:32px; border-radius:50%; object-fit:cover;">
+      {% else %}
+        <span style="display:inline-flex; width:32px; height:32px; border-radius:50%; background:var(--pico-primary-background); color:var(--pico-primary); align-items:center; justify-content:center; font-weight:700; font-size:0.85rem;">{{ c.user_a.name[0].upper() }}</span>
+      {% endif %}
+      {% if c.user_b.photo_filename %}
+        <img src="/static/photos/{{ c.user_b.photo_filename }}" alt=""
+             style="width:32px; height:32px; border-radius:50%; object-fit:cover;">
+      {% else %}
+        <span style="display:inline-flex; width:32px; height:32px; border-radius:50%; background:var(--pico-primary-background); color:var(--pico-primary); align-items:center; justify-content:center; font-weight:700; font-size:0.85rem;">{{ c.user_b.name[0].upper() }}</span>
+      {% endif %}
+    </div>
+    <div style="flex:1;">
+      <strong>{{ c.user_a.name }} & {{ c.user_b.name }}</strong>
+      <div style="font-size:0.8rem; color:var(--pico-muted-color);">
+        {{ ((c.mutual_avg) | round | int) }}% {{ 'mutuo' if lang == 'es' else 'mutual' }}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
 {% endif %}
 
 <div style="margin-top:1.5rem;"><a href="/">← {{ 'Inicio' if lang == 'es' else 'Home' }}</a></div>
