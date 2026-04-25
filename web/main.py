@@ -1,3 +1,5 @@
+import logging
+import os
 import socket
 from contextlib import asynccontextmanager
 
@@ -8,9 +10,15 @@ from starlette.middleware.sessions import SessionMiddleware
 from middleware.idle_timeout import IdleTimeoutMiddleware
 from middleware.csrf import OriginCheckMiddleware
 
-from config import SECRET_KEY, PHOTOS_DIR, STATIC_DIR
+from config import SESSION_SECRET, SESSION_SECRET_FILE, PHOTOS_DIR, STATIC_DIR
 from database import init_db
 from seed import seed_questions
+
+log = logging.getLogger("gtky")
+if "SESSION_SECRET" in os.environ:
+    log.info("Session secret loaded from environment.")
+else:
+    log.info(f"Session secret loaded from {SESSION_SECRET_FILE}. Set SESSION_SECRET env var to override.")
 
 from routers import auth, home, survey, quiz, connections, active_users, profile, groups, admin, about, photo_prompt
 
@@ -47,7 +55,7 @@ class SessionUserContextMiddleware(BaseHTTPMiddleware):
 app = FastAPI(lifespan=lifespan, title="GTKY")
 app.add_middleware(
     SessionMiddleware,
-    secret_key=SECRET_KEY,
+    secret_key=SESSION_SECRET,
     max_age=60 * 60 * 24 * 30,  # 30 days
     session_cookie="gtky_session",
     same_site="lax",
