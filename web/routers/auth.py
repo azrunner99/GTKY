@@ -1,5 +1,7 @@
 import re
+from enum import Enum
 from typing import Optional
+from urllib.parse import urlencode
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -8,6 +10,13 @@ from database import get_db
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+
+
+class MatchKind(str, Enum):
+    EXACT = "exact"
+    PREFIX_LONGER = "prefix_longer"    # typed "Alex S", existing "Alex Smith"
+    PREFIX_SHORTER = "prefix_shorter"  # typed "Alex Smith", existing "Alex S"
+    SAME_INITIAL = "same_initial"      # typed "Alex Smith", existing "Alex Smyth"
 
 
 def _title_case_segment(seg: str) -> str:
@@ -34,6 +43,56 @@ def normalize_name(name: str) -> str:
     return " ".join(out)
 
 
+def classify_name_match(
+    typed_first: str, typed_last: str,
+    existing_first: str, existing_last: str,
+) -> Optional[MatchKind]:
+    tf, tl = typed_first.lower(), typed_last.lower()
+    ef, el = existing_first.lower(), existing_last.lower()
+    if tf != ef:
+        return None
+    if el == tl:
+        return MatchKind.EXACT
+    if tl and el and el.startswith(tl):
+        return MatchKind.PREFIX_LONGER
+    if tl and el and tl.startswith(el):
+        return MatchKind.PREFIX_SHORTER
+    if tl and el and tl[0] == el[0]:
+        return MatchKind.SAME_INITIAL
+    return None
+
+
+async def find_similar_names(db, typed_name: str):
+    typed = normalize_name(typed_name)
+    if not typed:
+        return []
+    parts = typed.split(" ", 1)
+    typed_first = parts[0] if parts else ""
+    typed_last = parts[1] if len(parts) > 1 else ""
+    if not typed_first:
+        return []
+
+    async with db.execute("SELECT id, name, photo_filename FROM users") as cur:
+        users = await cur.fetchall()
+
+    matches = []
+    for u in users:
+        u_parts = u["name"].split(" ", 1)
+        u_first = u_parts[0] if u_parts else ""
+        u_last = u_parts[1] if len(u_parts) > 1 else ""
+        kind = classify_name_match(typed_first, typed_last, u_first, u_last)
+        if kind:
+            matches.append({"user": dict(u), "kind": kind})
+    order = {
+        MatchKind.EXACT: 0,
+        MatchKind.PREFIX_LONGER: 1,
+        MatchKind.PREFIX_SHORTER: 1,
+        MatchKind.SAME_INITIAL: 2,
+    }
+    matches.sort(key=lambda m: order[m["kind"]])
+    return matches
+
+
 @router.post("/signin", response_class=HTMLResponse)
 async def signin(
     request: Request,
@@ -52,6 +111,7 @@ async def signin(
             request.session["user_id"] = row["id"]
             request.session["user_name"] = row["name"]
             request.session.pop("lang", None)
+            request.session.pop("skip_similar_for_name", None)
             return RedirectResponse("/", status_code=303)
 
         # New user flow
@@ -71,26 +131,76 @@ async def signin(
                 },
             )
 
-        # Hard exact-match check (similar-name detection comes in W1.7).
-        async with db.execute("SELECT id, name FROM users WHERE name=?", (name,)) as cur:
-            existing = await cur.fetchone()
-        if existing:
-            # Exact collision — sign them in as that user.
-            # W1.7 will upgrade this to a confirmation prompt.
-            request.session["user_id"] = existing["id"]
-            request.session["user_name"] = existing["name"]
-            request.session.pop("lang", None)
-            return RedirectResponse("/", status_code=303)
+        lang = request.session.get("lang", "en")
+        matches = await find_similar_names(db, name)
+        skip_similar_for = request.session.get("skip_similar_for_name")
+        bypass_fuzzy = skip_similar_for and skip_similar_for == name
 
-        async with db.execute("INSERT INTO users(name) VALUES(?)", (name,)) as cur:
-            user_id = cur.lastrowid
-        await db.commit()
+        if matches:
+            only_exact = len(matches) == 1 and matches[0]["kind"] == MatchKind.EXACT
+            if only_exact:
+                return templates.TemplateResponse(
+                    "home/duplicate_name.html",
+                    {
+                        "request": request,
+                        "lang": lang,
+                        "colliding_user": matches[0]["user"],
+                        "typed_first": first_name,
+                        "typed_last": last_name,
+                        "typed_full": name,
+                    },
+                )
+            if not bypass_fuzzy:
+                return templates.TemplateResponse(
+                    "home/similar_name.html",
+                    {
+                        "request": request,
+                        "lang": lang,
+                        "matches": matches,
+                        "typed_first": first_name,
+                        "typed_last": last_name,
+                        "typed_full": name,
+                    },
+                )
+
+        # Clear bypass flag now that we're past the fuzzy check.
+        request.session.pop("skip_similar_for_name", None)
+
+        try:
+            async with db.execute("INSERT INTO users(name) VALUES(?)", (name,)) as cur:
+                user_id = cur.lastrowid
+            await db.commit()
+        except Exception:
+            return templates.TemplateResponse(
+                "home/index.html",
+                {
+                    "request": request,
+                    "lang": lang,
+                    "error": "That exact name is already taken. Add more letters to your last name.",
+                    "existing_users": [],
+                    "prefill_first": first_name,
+                    "prefill_last": last_name,
+                },
+            )
+
         request.session["user_id"] = user_id
         request.session["user_name"] = name
         request.session.pop("lang", None)
         return RedirectResponse("/", status_code=303)
     finally:
         await db.close()
+
+
+@router.post("/signin-different", response_class=HTMLResponse)
+async def signin_different(
+    request: Request,
+    typed_first: str = Form(...),
+    typed_last: str = Form(...),
+    typed_full: str = Form(...),
+):
+    request.session["skip_similar_for_name"] = typed_full
+    params = urlencode({"mode": "new", "first": typed_first, "last": typed_last})
+    return RedirectResponse(f"/?{params}", status_code=303)
 
 
 @router.post("/signout")

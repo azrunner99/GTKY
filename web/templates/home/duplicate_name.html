@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<article style="margin-top:2rem;">
+  <h3 style="text-align:center;">
+    {{ '¿Eres tú?' if lang == 'es' else 'Are you them?' }}
+  </h3>
+  <p style="text-align:center;">
+    {% if lang == 'es' %}
+    Ya hay alguien llamado <strong>{{ colliding_user.name }}</strong> aquí.
+    {% else %}
+    There's already a <strong>{{ colliding_user.name }}</strong> here.
+    {% endif %}
+  </p>
+  <div style="display:flex; gap:0.75rem; margin-top:1.5rem;">
+    <form method="post" action="/signin" style="flex:1;">
+      <input type="hidden" name="existing_user_id" value="{{ colliding_user.id }}">
+      <button type="submit" style="width:100%;">
+        {{ 'Sí, soy yo' if lang == 'es' else "Yes, that's me" }}
+      </button>
+    </form>
+    <form method="post" action="/signin-different" style="flex:1;">
+      <input type="hidden" name="typed_first" value="{{ typed_first }}">
+      <input type="hidden" name="typed_last" value="{{ typed_last }}">
+      <input type="hidden" name="typed_full" value="{{ typed_full }}">
+      <button type="submit" class="outline" style="width:100%;">
+        {{ 'No, soy diferente' if lang == 'es' else "No, I'm different" }}
+      </button>
+    </form>
+  </div>
+  <p style="font-size:0.85rem; color:var(--pico-muted-color); text-align:center; margin-top:1rem;">
+    {{ 'Si eres diferente, agrega más letras a tu apellido para distinguirte.' if lang == 'es'
+       else "If you're different, add more letters to your last name to tell you apart." }}
+  </p>
+</article>
+{% endblock %}

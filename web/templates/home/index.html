@@ -25,10 +25,12 @@
     <form method="post" action="/signin">
       <input type="hidden" name="is_new" value="1">
       <label>{{ 'Nombre' if lang == 'es' else 'First name' }}
-        <input type="text" name="first_name" required autofocus value="{{ prefill_first or '' }}">
+        <input type="text" name="first_name" required autofocus
+               value="{{ request.query_params.get('first', prefill_first or '') }}">
       </label>
       <label>{{ 'Apellido o inicial' if lang == 'es' else 'Last name or initial' }}
-        <input type="text" name="last_name" required value="{{ prefill_last or '' }}">
+        <input type="text" name="last_name" required
+               value="{{ request.query_params.get('last', prefill_last or '') }}">
       </label>
       <button type="submit" style="width:100%;">{{ 'Entrar' if lang == 'es' else "Let's go" }}</button>
     </form>

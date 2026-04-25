@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<article style="margin-top:2rem;">
+  <h3 style="text-align:center;">
+    {{ '¿Eres tú?' if lang == 'es' else 'Is this you?' }}
+  </h3>
+  <p style="text-align:center; color:var(--pico-muted-color); font-size:0.9rem;">
+    {{ 'Encontramos a alguien con un nombre parecido. Toca tu nombre si ya estás aquí:'
+       if lang == 'es'
+       else "We found someone with a similar name. Tap your name if you're already here:" }}
+  </p>
+  <div style="display:flex; flex-direction:column; gap:0.5rem; margin-top:1rem;">
+    {% for m in matches %}
+    <form method="post" action="/signin">
+      <input type="hidden" name="existing_user_id" value="{{ m.user.id }}">
+      <button type="submit" class="outline" style="width:100%; display:flex; align-items:center; gap:0.75rem; padding:0.6rem; text-align:left;">
+        {% if m.user.photo_filename %}
+          <img src="/static/photos/{{ m.user.photo_filename }}" alt=""
+               style="width:36px; height:36px; border-radius:50%; object-fit:cover;">
+        {% else %}
+          <span style="display:inline-flex; width:36px; height:36px; border-radius:50%; background:var(--pico-primary-background); color:var(--pico-primary); align-items:center; justify-content:center; font-weight:700;">{{ m.user.name[0].upper() }}</span>
+        {% endif %}
+        <span>{{ m.user.name }}</span>
+      </button>
+    </form>
+    {% endfor %}
+  </div>
+  <form method="post" action="/signin-different" style="margin-top:1rem;">
+    <input type="hidden" name="typed_first" value="{{ typed_first }}">
+    <input type="hidden" name="typed_last" value="{{ typed_last }}">
+    <input type="hidden" name="typed_full" value="{{ typed_full }}">
+    <button type="submit" style="width:100%;">
+      {{ 'Ninguno — soy diferente' if lang == 'es' else "None of these — I'm different" }}
+    </button>
+  </form>
+</article>
+{% endblock %}
