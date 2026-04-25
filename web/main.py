@@ -1,9 +1,11 @@
 import logging
 import os
 import socket
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -52,6 +54,8 @@ class SessionUserContextMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+_START_TIME = time.time()
+
 app = FastAPI(lifespan=lifespan, title="GTKY")
 app.add_middleware(
     SessionMiddleware,
@@ -78,6 +82,11 @@ app.include_router(profile.router)
 app.include_router(groups.router)
 app.include_router(admin.router)
 app.include_router(about.router)
+
+
+@app.get("/health", include_in_schema=False)
+async def health():
+    return JSONResponse({"ok": True, "uptime_seconds": int(time.time() - _START_TIME)})
 
 
 if __name__ == "__main__":
