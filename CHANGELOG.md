@@ -2,6 +2,8 @@
 
 ## Web UX Fix Pack
 
+- **W4.4 — Stable session secret** — `config.py` now exports `SESSION_SECRET` via `load_session_secret()`: reads from `SESSION_SECRET` env var first, then falls back to a `.session_secret` file on disk (auto-generated with `secrets.token_urlsafe(48)` on first launch, `chmod 0600`). Existing sessions survive restarts; only a deliberate env override or file deletion rotates the secret. `.session_secret` added to `web/.gitignore`. `main.py` logs at startup which source was used.
+
 - **W4.3 — Upload validation** — `upload_photo` now rejects non-image content types up front, caps total upload size at 10 MB (read in 64 KB chunks), and uses PIL's `verify()` to catch malformed images before processing. Adds a center-crop step to match Android's `PhotoStorage` behavior. User-visible error messages ("Photo too large" / "isn't a valid image") are set as a session flag, popped in the photo-prompt and profile GET handlers, and rendered in both templates. `PHOTO_MAX_UPLOAD_BYTES` constant in `config.py`.
 
 - **W4.2 — Origin check (CSRF)** — New `middleware/csrf.py` rejects POST/PUT/PATCH/DELETE requests whose `Origin` (or fallback `Referer`) header doesn't match the request's host. Combined with `SameSite=lax` on the session cookie (now set explicitly in `main.py`), this blocks the realistic CSRF vectors without the complexity of a synchronizer-token pattern. CLI users testing with curl need to pass `-H "Origin: http://localhost:8000"`. Verified: cross-origin POST → 403, no-origin POST → 403, same-origin POST → 303, GET → 200.
