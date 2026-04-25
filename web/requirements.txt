@@ -7,3 +7,4 @@ starlette==0.41.3
 aiosqlite==0.20.0
 Pillow==11.0.0
 pytest>=8.0
+qrcode==8.0

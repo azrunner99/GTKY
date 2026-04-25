@@ -74,20 +74,58 @@
   </script>
 
 {% else %}
-  <div style="display:flex; flex-direction:column; gap:0.75rem; margin-top:1rem;">
-    <p style="text-align:center; color:var(--pico-muted-color); margin:0 0 0.5rem;">
-      {{ '¡Bienvenido! ¿Eres nuevo o ya te registraste?' if lang == 'es'
-         else 'Welcome! Are you new here or already signed up?' }}
+  {% if icebreaker %}
+  <article id="icebreaker-card" style="margin-bottom:1.25rem;">
+    <div style="font-size:0.7rem; font-weight:700; letter-spacing:0.08em; color:var(--pico-muted-color); text-transform:uppercase; margin-bottom:0.6rem;">
+      {{ icebreaker.category }}
+    </div>
+    <p style="font-size:1.1rem; font-weight:600; margin-bottom:0.2rem;">
+      {{ icebreaker.question_en }}
     </p>
-    <a href="/?mode=new" role="button" style="text-align:center;">
-      {{ 'Soy nuevo aquí' if lang == 'es' else "I'm new here" }}
-    </a>
-    {% if existing_users %}
-    <a href="/?mode=returning" role="button" class="outline" style="text-align:center;">
-      {{ 'Ya estoy aquí' if lang == 'es' else "I'm already here" }}
-    </a>
-    {% endif %}
+    <p style="font-size:0.85rem; opacity:0.55; margin-bottom:1rem;">
+      {{ icebreaker.question_es }}
+    </p>
+    <div style="display:flex; flex-direction:column; gap:0.5rem;">
+      {% for i in range(icebreaker.options_en | length) %}
+      <button class="outline" onclick="revealLogin()" style="text-align:left; padding:0.55rem 1rem;">
+        <span style="display:block; font-weight:500;">{{ icebreaker.options_en[i] }}</span>
+        <span style="display:block; font-size:0.8rem; opacity:0.55;">{{ icebreaker.options_es[i] }}</span>
+      </button>
+      {% endfor %}
+    </div>
+    <p style="text-align:center; margin-top:0.75rem; margin-bottom:0;">
+      <a href="/" style="font-size:0.85rem; color:var(--pico-muted-color);">
+        Skip &nbsp;/&nbsp; Saltar
+      </a>
+    </p>
+  </article>
+  {% endif %}
+
+  <div id="login-section" {% if icebreaker %}style="display:none;"{% endif %}>
+    <div style="display:flex; flex-direction:column; gap:0.75rem; margin-top:0.5rem;">
+      <p style="text-align:center; color:var(--pico-muted-color); margin:0 0 0.5rem;">
+        Welcome! Are you new here or already signed up?<br>
+        <span style="font-size:0.85rem; opacity:0.65;">¡Bienvenido! ¿Eres nuevo o ya te registraste?</span>
+      </p>
+      <a href="/?mode=new" role="button" style="text-align:center;">
+        I'm new here &nbsp;<span style="opacity:0.65; font-size:0.85rem;">/ Soy nuevo aquí</span>
+      </a>
+      {% if existing_users %}
+      <a href="/?mode=returning" role="button" class="outline" style="text-align:center;">
+        I'm already here &nbsp;<span style="opacity:0.65; font-size:0.85rem;">/ Ya estoy aquí</span>
+      </a>
+      {% endif %}
+    </div>
   </div>
+
+  <script>
+    function revealLogin() {
+      var card = document.getElementById('icebreaker-card');
+      var login = document.getElementById('login-section');
+      if (card) card.style.display = 'none';
+      if (login) { login.style.display = 'block'; login.scrollIntoView({behavior:'smooth'}); }
+    }
+  </script>
 {% endif %}
 
 <div class="lang-toggle" style="text-align:center; margin-top:1.5rem;">

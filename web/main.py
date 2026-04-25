@@ -92,15 +92,30 @@ async def health():
 if __name__ == "__main__":
     import uvicorn
 
-    hostname = socket.gethostname()
     try:
-        lan_ip = socket.gethostbyname(hostname)
+        import subprocess
+        result = subprocess.run(
+            ["powershell.exe", "-Command",
+             "(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '127.*' -and $_.IPAddress -notlike '172.*' -and $_.IPAddress -notlike '169.*' } | Select-Object -First 1).IPAddress"],
+            capture_output=True, text=True, timeout=5
+        )
+        lan_ip = result.stdout.strip() or "localhost"
     except Exception:
         lan_ip = "localhost"
 
+    network_url = f"http://{lan_ip}:8000"
     print("\n=== GTKY Web App ===")
     print(f"Local:   http://localhost:8000")
-    print(f"Network: http://{lan_ip}:8000")
+    print(f"Network: {network_url}")
     print("Share the Network URL with others on your WiFi\n")
+    try:
+        import qrcode
+        qr = qrcode.QRCode(border=1)
+        qr.add_data(network_url)
+        qr.make(fit=True)
+        qr.print_ascii(invert=True)
+        print()
+    except ImportError:
+        print("(install qrcode for a scannable QR code: pip3 install qrcode)\n")
 
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

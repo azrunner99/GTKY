@@ -1,8 +1,11 @@
+import json
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from config import TEMPLATES_DIR, QUIZ_UNLOCK_THRESHOLD
 from database import get_db
+from services.question_phrasing import for_survey_en, for_survey_es, category_label
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -30,9 +33,25 @@ async def home(request: Request):
                 "SELECT id, name, photo_filename FROM users ORDER BY name"
             ) as cur:
                 existing_users = [dict(r) for r in await cur.fetchall()]
+
+            icebreaker = None
+            async with db.execute(
+                "SELECT * FROM survey_questions ORDER BY RANDOM() LIMIT 1"
+            ) as cur:
+                q_row = await cur.fetchone()
+            if q_row:
+                q = dict(q_row)
+                icebreaker = {
+                    "category": category_label(q["category"], "en"),
+                    "question_en": for_survey_en(q["template_en"]),
+                    "question_es": for_survey_es(q["template_es"]),
+                    "options_en": json.loads(q["options_en"]),
+                    "options_es": json.loads(q["options_es"]),
+                }
+
             return templates.TemplateResponse(
                 "home/index.html",
-                {"request": request, "lang": lang, "existing_users": existing_users},
+                {"request": request, "lang": lang, "existing_users": existing_users, "icebreaker": icebreaker},
             )
 
         async with db.execute("SELECT name, photo_filename FROM users WHERE id=?", (user_id,)) as cur:
