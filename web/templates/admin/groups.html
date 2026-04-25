@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}GTKY – Admin – Groups{% endblock %}
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+  <h2 style="margin:0;">{{ 'Grupos' if lang == 'es' else 'Groups' }}</h2>
+  <a href="/admin">← Admin</a>
+</div>
+
+<article style="margin-bottom:1.5rem;">
+  <h3 style="font-size:1rem;">{{ 'Crear grupo' if lang == 'es' else 'Create group' }}</h3>
+  <form method="post" action="/groups/create" style="display:flex; gap:0.5rem;">
+    <input type="text" name="name"
+           placeholder="{{ 'Nombre del grupo' if lang == 'es' else 'Group name' }}"
+           required style="flex:1; margin:0;">
+    <button type="submit">{{ 'Crear' if lang == 'es' else 'Create' }}</button>
+  </form>
+</article>
+
+<h3 style="font-size:1rem;">{{ 'Grupos existentes' if lang == 'es' else 'Existing groups' }} ({{ groups | length }})</h3>
+
+{% if not groups %}
+<p style="color:var(--pico-muted-color);">
+  {{ 'Aún no hay grupos.' if lang == 'es' else 'No groups yet.' }}
+</p>
+{% else %}
+{% for g in groups %}
+<div style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem 0; border-bottom:1px solid var(--pico-muted-border-color);">
+  <div style="flex:1;">
+    <strong>{{ g.name }}</strong>
+    <div style="font-size:0.75rem; color:var(--pico-muted-color);">
+      {{ g.member_count }} {{ 'miembro' if lang == 'es' else 'member' }}{% if g.member_count != 1 %}s{% endif %}
+      · {{ g.created_at[:10] }}
+    </div>
+  </div>
+  <form method="post" action="/admin/groups/{{ g.id }}/delete"
+        onsubmit="return confirm('{{ 'Eliminar grupo' if lang == 'es' else 'Delete group' }} {{ g.name }}?')">
+    <button type="submit" class="outline secondary"
+            style="padding:0.2rem 0.5rem; font-size:0.75rem; color:var(--pico-del-color);">
+      {{ 'Eliminar' if lang == 'es' else 'Delete' }}
+    </button>
+  </form>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

@@ -157,6 +157,34 @@ async def admin_user_answers(request: Request, uid: int):
         await db.close()
 
 
+@router.get("/groups", response_class=HTMLResponse)
+async def admin_groups(request: Request):
+    if not is_admin(request):
+        return RedirectResponse("/admin")
+    lang = request.session.get("lang", "en")
+
+    db = await get_db()
+    try:
+        async with db.execute(
+            """
+            SELECT g.id, g.name, g.created_at,
+                   COUNT(ugm.user_id) AS member_count
+            FROM groups g
+            LEFT JOIN user_group_memberships ugm ON ugm.group_id = g.id
+            GROUP BY g.id
+            ORDER BY g.name
+            """
+        ) as cur:
+            groups = [dict(r) for r in await cur.fetchall()]
+    finally:
+        await db.close()
+
+    return templates.TemplateResponse(
+        "admin/groups.html",
+        {"request": request, "lang": lang, "groups": groups},
+    )
+
+
 @router.post("/groups/{gid:int}/delete")
 async def admin_delete_group(request: Request, gid: int):
     if not is_admin(request):

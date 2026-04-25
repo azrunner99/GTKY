@@ -2,6 +2,8 @@
 
 ## Web UX Fix Pack
 
+- **W3.4 — Admin groups management page** — New `/admin/groups` route with create form, list of existing groups with member counts and creation dates, and per-group delete with confirmation. Linked from the main admin page via a "Manage groups" button above the user list.
+
 - **W3.3 — Group creation is admin-only** — `/groups/create` rejects non-admins (returns 303 to `/groups` without side effects). The user-facing `/groups` page no longer shows the create form; a bilingual hint line explains that admins create groups. Self-assignment (join / leave) remains open to all signed-in users. Admin delete-group route added to `admin.py`; memberships cascade-delete via existing FK.
 
 - **W3.2 — Photo prompt page** — New `/photo-prompt` page shown after sign-in, up to 3 times per user. Uses `<input type="file" accept="image/*" capture="user">` so mobile browsers open the device camera directly; desktop gets a file picker. The count is incremented server-side before rendering the page so force-quit mid-prompt still counts toward the cap. On the third prompt, a "Never ask again" button appears and sets `photo_prompt_opt_out = 1`. Uploading a photo naturally stops further prompts via the existing `photo_filename IS NOT NULL` check. `upload_photo` now honors a safe `redirect_to` form field so the prompt page returns users to `/` after a successful upload. Implemented in `routers/photo_prompt.py`; registered alongside `auth` in `main.py`.
