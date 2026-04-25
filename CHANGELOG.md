@@ -2,6 +2,8 @@
 
 ## Web UX Fix Pack
 
+- **W3.1 — Photo prompt schema** — Added `photo_prompt_count` and `photo_prompt_opt_out` columns to the `users` table via idempotent `ALTER TABLE` migration in `init_db`. Helper `_add_column_if_missing` checks `PRAGMA table_info` before altering to ensure the migration is safe on both fresh and existing databases.
+
 - **W2.9 — Connections page rebuilt with scope toggle** — Replaced the two-table "my scores / who knows me" layout with a single scrollable list and a Mine / Everyone scope toggle. "Mine" shows every person you have quiz history with in either direction, with both directional scores inline (You → N/M · → You N/M), sorted by mutual average, each row linking to their profile. "Everyone" shows pair rows with dual avatars and an aggregated mutual score across all quiz activity in the group. Empty states explain how to earn connections. Bilingual EN/ES throughout. Replaces the old `my_scores`/`their_scores` template variables.
 
 - **W2.8 — Per-subject results breakdown** — Quiz results page now shows a large score header (3rem, bold), then a per-person breakdown sorted best-first. Each row shows avatar, name, and correct/total color-coded green (≥80%), red (<50%), or muted otherwise. Each row links to that subject's profile. If any subject scored under 60%, a "Quiz yourself on $name next?" card appears with a one-tap re-quiz form. Handler and breakdown logic already landed in W2.6; this fix brings the template fully in line with the spec.

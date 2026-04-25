@@ -83,7 +83,18 @@ async def init_db():
         await db.execute("PRAGMA foreign_keys=ON")
         for stmt in DDL:
             await db.execute(stmt)
+        # Additive migrations (idempotent).
+        await _add_column_if_missing(db, "users", "photo_prompt_count", "INTEGER NOT NULL DEFAULT 0")
+        await _add_column_if_missing(db, "users", "photo_prompt_opt_out", "INTEGER NOT NULL DEFAULT 0")
         await db.commit()
+
+
+async def _add_column_if_missing(db, table: str, column: str, type_clause: str):
+    async with db.execute(f"PRAGMA table_info({table})") as cur:
+        rows = await cur.fetchall()
+    existing = {r[1] for r in rows}  # r[1] is the column name
+    if column not in existing:
+        await db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {type_clause}")
 
 
 async def get_db() -> aiosqlite.Connection:
