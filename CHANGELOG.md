@@ -2,6 +2,8 @@
 
 ## Web UX Fix Pack
 
+- **W2.5 — Quiz filter page** — `/quiz` rewritten as a dedicated filter page with group chip filters, a collapsible person multi-select with search, and a live pool-size preview (debounced 200ms via `/quiz/pool-size` JSON endpoint). Selecting specific people overrides the group filter with a visible hint. Pool count capped at 30 in the preview. `quiz_select` now queries eligible users at `>= QUIZ_UNLOCK_THRESHOLD` (raised from `> 0`). Replaces the old flat user-list select.
+
 - **W2.4 — `for_quiz` centralized** — Added `for_quiz(template, subject_name)` to `services/question_phrasing.py`, mirroring Android `util/QuestionPhrasing.kt:forQuiz`. Inline `template.replace("[NAME]", ...)` calls in `routers/quiz.py` (`quiz_question`) and `routers/admin.py` (`admin_user_answers`) now route through it.
 
 - **W2.3 — Dashboard ready-count** — Quiz button on the dashboard now shows "(N ready)" when other users meet the threshold, or a disabled "wait for others" state when the viewer is unlocked but nobody else is ready yet. Locked state unchanged (🔒). `home.py` computes `ready_count` only when the viewer is unlocked (skips the query when not).

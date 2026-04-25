@@ -1,27 +1,158 @@
 {% extends "base.html" %}
 {% block title %}GTKY – Quiz{% endblock %}
 {% block content %}
-<h2>{{ '¿A quién quieres conocer?' if lang == 'es' else 'Who do you want to quiz on?' }}</h2>
-{% if others %}
-  {% for u in others %}
-  <div class="user-card">
-    {% if u.photo_filename %}
-      <div class="avatar"><img src="/static/photos/{{ u.photo_filename }}" alt="{{ u.name }}"></div>
-    {% else %}
-      <div class="avatar" style="background:var(--pico-primary-background);">{{ u.name[0].upper() }}</div>
-    {% endif %}
-    <div style="flex:1;">
-      <strong>{{ u.name }}</strong>
-      <div style="font-size:0.8rem; color:var(--pico-muted-color);">{{ u.answered }} {{ 'preguntas respondidas' if lang == 'es' else 'questions answered' }}</div>
-    </div>
-    <form method="post" action="/quiz/start">
-      <input type="hidden" name="subject_id" value="{{ u.id }}">
-      <button type="submit" class="outline" style="padding:0.3rem 0.9rem;">{{ 'Quiz' }}</button>
-    </form>
-  </div>
-  {% endfor %}
+<h2>{{ 'Tomar un Quiz' if lang == 'es' else 'Take a Quiz' }}</h2>
+
+{% if not eligible %}
+<article>
+  <p>{{ 'Nadie más está listo todavía. Otros necesitan responder al menos 8 preguntas.' if lang == 'es'
+        else "Nobody else is ready yet. Other players need to answer at least 8 questions first." }}</p>
+  <a href="/" role="button" class="outline">{{ '← Inicio' if lang == 'es' else '← Home' }}</a>
+</article>
 {% else %}
-  <p style="color:var(--pico-muted-color);">{{ 'Nadie ha respondido preguntas todavía.' if lang == 'es' else 'No one else has answered questions yet.' }}</p>
+
+<form method="post" action="/quiz/start" id="filter-form">
+
+  {% if groups %}
+  <fieldset style="margin-bottom:1rem;">
+    <legend style="font-size:0.9rem; font-weight:600;">
+      {{ 'Filtrar por grupo:' if lang == 'es' else 'Filter by group:' }}
+    </legend>
+    <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
+      {% for g in groups %}
+      <label style="display:inline-flex; align-items:center; gap:0.3rem; padding:0.3rem 0.6rem; background:var(--pico-card-background-color); border:1px solid var(--pico-muted-border-color); border-radius:999px; cursor:pointer;">
+        <input type="checkbox" name="group_ids" value="{{ g.id }}"
+               data-members="{{ g.member_ids | join(',') }}"
+               onchange="updatePoolPreview()" style="margin:0;">
+        <span>{{ g.name }}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  {% endif %}
+
+  <details style="margin-bottom:1rem;" id="people-section">
+    <summary style="cursor:pointer; font-weight:600;">
+      {{ 'Elegir personas específicas' if lang == 'es' else 'Pick specific people' }}
+      <span id="person-count" style="color:var(--pico-muted-color); font-weight:400;">(0)</span>
+    </summary>
+
+    <input type="text" id="person-search"
+           placeholder="{{ 'Buscar...' if lang == 'es' else 'Search...' }}"
+           oninput="filterPeople(this.value)"
+           style="margin:0.75rem 0 0.5rem;">
+
+    <div id="person-list" style="max-height:280px; overflow-y:auto;">
+      {% for u in eligible %}
+      <label class="person-row" data-name="{{ u.name | lower }}"
+             style="display:flex; align-items:center; gap:0.6rem; padding:0.4rem 0.5rem; cursor:pointer; border-radius:0.25rem;">
+        <input type="checkbox" name="subject_ids" value="{{ u.id }}"
+               onchange="updatePoolPreview(); updatePersonCount()" style="margin:0;">
+        {% if u.photo_filename %}
+          <img src="/static/photos/{{ u.photo_filename }}" alt=""
+               style="width:28px; height:28px; border-radius:50%; object-fit:cover;">
+        {% else %}
+          <span style="display:inline-flex; width:28px; height:28px; border-radius:50%; background:var(--pico-primary-background); color:var(--pico-primary); align-items:center; justify-content:center; font-weight:700; font-size:0.8rem;">{{ u.name[0].upper() }}</span>
+        {% endif %}
+        <span>{{ u.name }}</span>
+        <span style="margin-left:auto; font-size:0.75rem; color:var(--pico-muted-color);">{{ u.answered }}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </details>
+
+  <p id="override-hint" style="display:none; font-size:0.8rem; color:var(--pico-muted-color); margin:0.5rem 0;">
+    {{ 'Filtro de grupo ignorado mientras seleccionas personas.' if lang == 'es'
+       else 'Group filter ignored while specific people are selected.' }}
+  </p>
+
+  <div id="pool-preview" style="text-align:center; padding:0.75rem; margin:1rem 0; background:var(--pico-card-background-color); border-radius:0.5rem;">
+    <span id="pool-count" style="font-weight:700;">—</span>
+    <span style="color:var(--pico-muted-color); font-size:0.85rem;">
+      {{ 'preguntas disponibles' if lang == 'es' else 'questions available' }}
+    </span>
+  </div>
+
+  <div style="display:flex; gap:0.75rem;">
+    <button type="submit" id="start-btn" style="flex:1;">
+      {{ 'Empezar Quiz' if lang == 'es' else 'Start Quiz' }}
+    </button>
+    <a href="/" role="button" class="outline" style="flex:0;">
+      {{ 'Cancelar' if lang == 'es' else 'Cancel' }}
+    </a>
+  </div>
+</form>
+
+<script>
+  const poolCache = {};
+  let lastFetchKey = '';
+  let fetchTimer = null;
+
+  function getSelectedGroupIds() {
+    return Array.from(document.querySelectorAll('input[name="group_ids"]:checked')).map(c => parseInt(c.value, 10));
+  }
+  function getSelectedSubjectIds() {
+    return Array.from(document.querySelectorAll('input[name="subject_ids"]:checked')).map(c => parseInt(c.value, 10));
+  }
+  function getGroupMembers(groupIds) {
+    const checkboxes = Array.from(document.querySelectorAll('input[name="group_ids"]'));
+    const map = {};
+    checkboxes.forEach(c => {
+      const ids = c.dataset.members ? c.dataset.members.split(',').filter(Boolean).map(x => parseInt(x, 10)) : [];
+      map[parseInt(c.value, 10)] = ids;
+    });
+    const out = new Set();
+    groupIds.forEach(gid => (map[gid] || []).forEach(uid => out.add(uid)));
+    return out;
+  }
+  function updatePersonCount() {
+    const n = getSelectedSubjectIds().length;
+    document.getElementById('person-count').textContent = `(${n})`;
+  }
+  function updatePoolPreview() {
+    const subjectIds = getSelectedSubjectIds();
+    const groupIds = getSelectedGroupIds();
+    const overrideHint = document.getElementById('override-hint');
+    overrideHint.style.display = (subjectIds.length > 0 && groupIds.length > 0) ? 'block' : 'none';
+
+    let effective;
+    if (subjectIds.length > 0) {
+      effective = subjectIds;
+    } else if (groupIds.length > 0) {
+      const members = getGroupMembers(groupIds);
+      effective = Array.from(document.querySelectorAll('input[name="subject_ids"]'))
+        .map(c => parseInt(c.value, 10))
+        .filter(id => members.has(id));
+    } else {
+      effective = Array.from(document.querySelectorAll('input[name="subject_ids"]')).map(c => parseInt(c.value, 10));
+    }
+
+    const key = effective.slice().sort().join(',');
+    if (key === lastFetchKey) return;
+    lastFetchKey = key;
+    clearTimeout(fetchTimer);
+    fetchTimer = setTimeout(() => {
+      const params = new URLSearchParams();
+      effective.forEach(id => params.append('subject_id', id));
+      fetch('/quiz/pool-size?' + params.toString())
+        .then(r => r.json())
+        .then(data => {
+          const count = Math.min(data.count || 0, 30);
+          document.getElementById('pool-count').textContent = count;
+          document.getElementById('start-btn').disabled = count === 0;
+        })
+        .catch(() => {
+          document.getElementById('pool-count').textContent = '?';
+        });
+    }, 200);
+  }
+  function filterPeople(q) {
+    q = q.toLowerCase();
+    document.querySelectorAll('.person-row').forEach(row => {
+      row.style.display = row.dataset.name.indexOf(q) >= 0 ? 'flex' : 'none';
+    });
+  }
+  updatePoolPreview();
+</script>
 {% endif %}
-<div style="margin-top:1.5rem;"><a href="/">← {{ 'Inicio' if lang == 'es' else 'Home' }}</a></div>
 {% endblock %}

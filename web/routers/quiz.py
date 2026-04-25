@@ -1,6 +1,6 @@
 import json
 import uuid
-from fastapi import APIRouter, Request, Form
+from fastapi import APIRouter, Request, Form, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from config import TEMPLATES_DIR, QUIZ_UNLOCK_THRESHOLD
@@ -31,23 +31,69 @@ async def quiz_select(request: Request):
 
         async with db.execute(
             """
-            SELECT u.id, u.name, u.photo_filename,
-                   COUNT(sa.id) as answered
+            SELECT u.id, u.name, u.photo_filename, COUNT(sa.id) as answered
             FROM users u
             LEFT JOIN survey_answers sa ON sa.user_id = u.id
             WHERE u.id != ?
             GROUP BY u.id
-            HAVING answered > 0
+            HAVING answered >= ?
             ORDER BY u.name
             """,
-            (user_id,),
+            (user_id, QUIZ_UNLOCK_THRESHOLD),
         ) as cur:
-            others = [dict(r) for r in await cur.fetchall()]
+            eligible = [dict(r) for r in await cur.fetchall()]
+
+        async with db.execute(
+            """
+            SELECT g.id, g.name,
+                   GROUP_CONCAT(ugm.user_id) AS member_ids
+            FROM groups g
+            LEFT JOIN user_group_memberships ugm ON ugm.group_id = g.id
+            GROUP BY g.id
+            ORDER BY g.name
+            """
+        ) as cur:
+            group_rows = await cur.fetchall()
+        groups = []
+        for r in group_rows:
+            member_ids = set()
+            if r["member_ids"]:
+                member_ids = set(int(x) for x in r["member_ids"].split(","))
+            groups.append({"id": r["id"], "name": r["name"], "member_ids": list(member_ids)})
 
         return templates.TemplateResponse(
             "quiz/select.html",
-            {"request": request, "lang": lang, "others": others},
+            {"request": request, "lang": lang, "eligible": eligible, "groups": groups},
         )
+    finally:
+        await db.close()
+
+
+@router.get("/pool-size")
+async def pool_size(request: Request, subject_id: list[int] = Query(default=[])):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return {"count": 0}
+
+    db = await get_db()
+    try:
+        if not subject_id:
+            return {"count": 0}
+
+        placeholders = ",".join("?" * len(subject_id))
+        async with db.execute(
+            f"""
+            SELECT COUNT(*) AS cnt
+            FROM survey_answers sa
+            WHERE sa.user_id IN ({placeholders})
+              AND sa.question_id NOT IN (
+                SELECT question_id FROM quiz_results WHERE guesser_id = ?
+              )
+            """,
+            (*subject_id, user_id),
+        ) as cur:
+            row = await cur.fetchone()
+        return {"count": row["cnt"]}
     finally:
         await db.close()
 
