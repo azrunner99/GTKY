@@ -2,6 +2,8 @@
 
 ## Web UX Fix Pack
 
+- **W2.3 — Dashboard ready-count** — Quiz button on the dashboard now shows "(N ready)" when other users meet the threshold, or a disabled "wait for others" state when the viewer is unlocked but nobody else is ready yet. Locked state unchanged (🔒). `home.py` computes `ready_count` only when the viewer is unlocked (skips the query when not).
+
 - **W2.2 — Survey progress: category + milestone** — Added a one-time milestone banner ("🎉 Quiz unlocked!") rendered above the question card on the page the user sees after crossing `QUIZ_UNLOCK_THRESHOLD`. The category badge was already present; redundant inline milestone text in the progress row removed to avoid duplication.
 
 - **W2.1 — Survey skip actually skips** — `survey_skip` now records the question ID in a session list (`skipped_question_ids`); `next_question` excludes both answered and skipped IDs via a dynamic SQL clause. Skip list capped at 50 entries to prevent cookie bloat. List is cleared when the user submits an answer, so skipped questions can resurface in a future round. Also added `user_id` to the shuffle seed (`0x474B5946 + user_id`) so two users no longer see questions in identical order.

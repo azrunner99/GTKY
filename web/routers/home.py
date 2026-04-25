@@ -47,6 +47,25 @@ async def home(request: Request):
             answered_count = (await cur.fetchone())["cnt"]
 
         quiz_unlocked = answered_count >= QUIZ_UNLOCK_THRESHOLD
+
+        if quiz_unlocked:
+            async with db.execute(
+                """
+                SELECT COUNT(*) AS cnt FROM (
+                    SELECT u.id
+                    FROM users u
+                    JOIN survey_answers sa ON sa.user_id = u.id
+                    WHERE u.id != ?
+                    GROUP BY u.id
+                    HAVING COUNT(sa.id) >= ?
+                )
+                """,
+                (user_id, QUIZ_UNLOCK_THRESHOLD),
+            ) as cur:
+                ready_count = (await cur.fetchone())["cnt"]
+        else:
+            ready_count = 0
+
         activity = await get_activity_stat(db)
 
         return templates.TemplateResponse(
@@ -59,6 +78,7 @@ async def home(request: Request):
                 "answered_count": answered_count,
                 "quiz_unlocked": quiz_unlocked,
                 "quiz_threshold": QUIZ_UNLOCK_THRESHOLD,
+                "ready_count": ready_count,
                 "activity": activity,
             },
         )

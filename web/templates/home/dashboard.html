@@ -40,8 +40,14 @@
 
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
   <a href="/survey" role="button">{{ 'Encuesta' if lang == 'es' else 'Survey' }}</a>
-  {% if quiz_unlocked %}
-    <a href="/quiz" role="button" class="secondary">Quiz</a>
+  {% if quiz_unlocked and ready_count > 0 %}
+    <a href="/quiz" role="button" class="secondary">
+      Quiz <span style="font-weight:400; font-size:0.85em;">({{ ready_count }} {{ 'listos' if lang == 'es' else 'ready' }})</span>
+    </a>
+  {% elif quiz_unlocked %}
+    <button disabled class="secondary" title="{{ 'Esperando que otros respondan' if lang == 'es' else 'Waiting for others to answer' }}">
+      Quiz <span style="font-weight:400; font-size:0.85em;">({{ 'esperando a otros' if lang == 'es' else 'wait for others' }})</span>
+    </button>
   {% else %}
     <button disabled class="secondary">Quiz 🔒</button>
   {% endif %}
