@@ -12,11 +12,17 @@
   <div style="flex:1;">
     <strong><a href="/profile/{{ u.id }}">{{ u.name }}</a></strong>
     {% if u.id == current_user_id %}<span style="font-size:0.75rem; color:var(--pico-primary);"> ({{ 'tú' if lang == 'es' else 'you' }})</span>{% endif %}
-    <div style="font-size:0.8rem; color:var(--pico-muted-color);">{{ u.answered }} {{ 'respondidas' if lang == 'es' else 'answered' }}</div>
+    <div style="font-size:0.8rem; color:var(--pico-muted-color);">
+      {% if u.is_eligible %}
+        {{ u.answered }} {{ 'respondidas' if lang == 'es' else 'answered' }}
+      {% else %}
+        {{ 'Todavía preparándose (' if lang == 'es' else 'Still setting up (' }}{{ u.answered }}/{{ quiz_threshold }})
+      {% endif %}
+    </div>
   </div>
-  {% if u.id != current_user_id and u.answered > 0 %}
+  {% if u.id != current_user_id and u.is_eligible %}
   <form method="post" action="/quiz/start">
-    <input type="hidden" name="subject_id" value="{{ u.id }}">
+    <input type="hidden" name="subject_ids" value="{{ u.id }}">
     <button type="submit" class="outline" style="padding:0.3rem 0.8rem; font-size:0.8rem;">Quiz</button>
   </form>
   {% endif %}

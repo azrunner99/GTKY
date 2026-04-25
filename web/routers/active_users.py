@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from config import TEMPLATES_DIR
+from config import TEMPLATES_DIR, QUIZ_UNLOCK_THRESHOLD
 from database import get_db
 
 router = APIRouter(prefix="/users")
@@ -29,9 +29,18 @@ async def active_users(request: Request):
         ) as cur:
             users = [dict(r) for r in await cur.fetchall()]
 
+        for u in users:
+            u["is_eligible"] = u["answered"] >= QUIZ_UNLOCK_THRESHOLD
+
         return templates.TemplateResponse(
             "active_users/list.html",
-            {"request": request, "lang": lang, "users": users, "current_user_id": user_id},
+            {
+                "request": request,
+                "lang": lang,
+                "users": users,
+                "current_user_id": user_id,
+                "quiz_threshold": QUIZ_UNLOCK_THRESHOLD,
+            },
         )
     finally:
         await db.close()
