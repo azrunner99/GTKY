@@ -1,4 +1,5 @@
 import json
+import random
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -10,28 +11,35 @@ router = APIRouter(prefix="/survey")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
-async def next_question(db, user_id: int):
-    """Return the next unanswered question for this user, shuffled by fixed seed."""
+async def next_question(db, user_id: int, skipped_ids: list[int] | None = None):
+    skipped_ids = skipped_ids or []
+    skipped_clause = ""
+    params = [user_id]
+    if skipped_ids:
+        placeholders = ",".join("?" * len(skipped_ids))
+        skipped_clause = f"AND sq.id NOT IN ({placeholders})"
+        params.extend(skipped_ids)
+
     async with db.execute(
-        """
+        f"""
         SELECT sq.id, sq.template_en, sq.template_es, sq.category, sq.type,
                sq.options_en, sq.options_es
         FROM survey_questions sq
         WHERE sq.id NOT IN (
             SELECT question_id FROM survey_answers WHERE user_id = ?
         )
+        {skipped_clause}
         ORDER BY sq.id
         """,
-        (user_id,),
+        params,
     ) as cur:
         rows = await cur.fetchall()
 
     if not rows:
         return None
 
-    # Deterministic shuffle matching Android seed
-    import random
-    rng = random.Random(0x474B5946)
+    # Per-user seed so two users don't see identical order.
+    rng = random.Random(0x474B5946 + user_id)
     rows_list = list(rows)
     rng.shuffle(rows_list)
     return rows_list[0]
@@ -51,7 +59,8 @@ async def survey_get(request: Request):
         ) as cur:
             total_answered = (await cur.fetchone())["cnt"]
 
-        q = await next_question(db, user_id)
+        skipped = request.session.get("skipped_question_ids", [])
+        q = await next_question(db, user_id, skipped)
         if not q:
             return templates.TemplateResponse(
                 "survey/done.html",
@@ -111,6 +120,8 @@ async def survey_answer(
     finally:
         await db.close()
 
+    # Clear skip list — skipped questions can resurface in the next cycle.
+    request.session.pop("skipped_question_ids", None)
     return RedirectResponse("/survey", status_code=303)
 
 
@@ -119,7 +130,11 @@ async def survey_skip(request: Request, question_id: int = Form(...)):
     user_id = request.session.get("user_id")
     if not user_id:
         return RedirectResponse("/")
-    # Move skipped question to end by marking it answered with a sentinel,
-    # then we just reload — next_question will pick a different one.
-    # Simple approach: just reload, the shuffle will land on a different question.
+    skipped = request.session.get("skipped_question_ids", [])
+    if question_id not in skipped:
+        skipped.append(question_id)
+        # Cap at 50 to prevent cookie bloat.
+        if len(skipped) > 50:
+            skipped = skipped[-50:]
+        request.session["skipped_question_ids"] = skipped
     return RedirectResponse("/survey", status_code=303)
